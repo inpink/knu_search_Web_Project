@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: header}">
+</head>
+
+<body class="d-flex justify-content-center align-items-center vh-100 flex-column"> <!-- 여기에 flex-column 추가 -->
+<div class="w-50">
+    <div class="card mt-4">
+        <div class="card-body">
+            <p class="text-center">* 하이룽~</p>
+            <p class="text-center">* 설문조사 열심히해~~ 대충하면 꿀밤</p>
+        </div>
+    </div>
+</div>
+
+<div class="w-50">
+    <h3 class="text-center mb-4">설문조사 로그인</h3>
+    <form action="#" th:action="@{/survey/login}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+        <div class="mb-3">
+            <label for="username" class="form-label">아이디:</label>
+            <input type="text" class="form-control" id="username" name="username" required minlength="1" maxlength="100">
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">비밀번호:</label>
+            <input type="password" class="form-control" id="password" name="password" required minlength="1" maxlength="100">
+        </div>
+        <button type="submit" class="btn btn-primary w-100">로그인</button>
+    </form>
+</div>
+</body>
+</html>
