@@ -37,4 +37,9 @@ public class SurveyQueryService {
             e.printStackTrace();
         }
     }
+
+    @Transactional
+    public SurveyQuery findQuery(int queryId) {
+        return surveyQueryRepository.findQueryById(queryId);
+    }
 }

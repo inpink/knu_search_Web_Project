@@ -44,7 +44,7 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/survey/login")
-                        .defaultSuccessUrl("/survey/queryNumber=1", true)
+                        .defaultSuccessUrl("/survey/queryId=1", true)
                         .permitAll()
                 )
                 .userDetailsService(participantDetailsService)

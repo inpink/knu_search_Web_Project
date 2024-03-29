@@ -1,6 +1,8 @@
 package knusearch.clear.survey;
 
 import jakarta.servlet.http.HttpServletRequest;
+import knusearch.clear.jpa.domain.dto.BasePostRequest;
+import knusearch.clear.jpa.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -8,8 +10,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 
 @Controller
 @Slf4j
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class SurveyController {
 
     private final SurveyQueryService surveyQueryService;
+    private final SearchService searchService;
 
     @GetMapping("/survey/login")
     public String loginForm(Model model, HttpServletRequest request) {
@@ -27,28 +30,22 @@ public class SurveyController {
         return "survey/surveyLogin";
     }
 
-    @PostMapping("/survey/login")
-    public String loginSubmit(@RequestParam("username") String username,
-                              @RequestParam("password") String password) {
-        log.info("Username: " + username);
-        log.info("Password: " + password);
+    @GetMapping("/survey/queryId={queryId}")
+    public String showSurveyQuery(@PathVariable("queryId") int queryId,
+                                  Model model) {
+        SurveyQuery survey = surveyQueryService.findQuery(queryId);
+        String query = survey.getQuery();
+        List<BasePostRequest> posts = searchService.findTopPostsSortByReverseTime(query);
 
+        model.addAttribute("posts",posts);
 
-
-        return "redirect:/survey/queryNumber=1";
+        return "survey/surveyForm";
     }
-
-    @GetMapping("/survey/queryNumber={number}")
-    public String handleSurveyQuery(@PathVariable("number") int number) {
-
-        return "hello";
-    }
-
+    // TODO :
 
     @GetMapping("/survey/updateQueries")
-    public String  updateQueries() {
+    public String updateQueries() {
         surveyQueryService.loadQueriesFromFile("static/surveyQueries.txt");
-
         return "hello";
     }
 

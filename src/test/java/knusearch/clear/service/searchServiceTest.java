@@ -2,7 +2,7 @@ package knusearch.clear.service;
 
 import knusearch.clear.jpa.domain.dto.BasePostRequest;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
-import knusearch.clear.jpa.service.MySqlSearchService;
+import knusearch.clear.jpa.service.SearchService;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
-public class MySqlSearchServiceTest {
+public class searchServiceTest {
 
     @Mock
     private BasePostRepository basePostRepository;
 
     @Autowired
-    private MySqlSearchService mySqlSearchService;
+    private SearchService searchService;
 
     /*
     @ParameterizedTest
@@ -91,7 +91,7 @@ public class MySqlSearchServiceTest {
                 .thenReturn(Arrays.asList(post1, post2));
 
         // When
-        List<Map.Entry<BasePostRequest, Integer>> result = mySqlSearchService.searchAndPosts(
+        List<Map.Entry<BasePostRequest, Integer>> result = searchService.searchAndPosts(
                 List.of(searchQuery));
 
         // Then
