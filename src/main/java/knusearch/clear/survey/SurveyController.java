@@ -43,7 +43,7 @@ public class SurveyController {
     }
     // TODO :
 
-    @GetMapping("/survey/updateQueries")
+    //@GetMapping("/survey/updateQueries")
     public String updateQueries() {
         surveyQueryService.loadQueriesFromFile("static/surveyQueries.txt");
         return "hello";
