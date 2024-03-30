@@ -49,8 +49,9 @@ public class SurveyController {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         Long participantId = userDetails.getParticipantId();
 
-        model.addAttribute("participantId",participantId);
+        model.addAttribute("user",userDetails);
         model.addAttribute("query",query);
+        model.addAttribute("queryId",queryId);
         model.addAttribute("posts",posts);
 
         return "survey/surveyForm";

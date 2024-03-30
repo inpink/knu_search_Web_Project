@@ -4,8 +4,13 @@
 </head>
 
 <body>
+<div style="position: absolute; right: 20px; top: 20px;">
+    <p>사용자: <span th:text="${user.username}"></span></p>
+    <p>ID: <span th:text="${user.participantId}"></span></p>
+</div>
+
 <div class="container mt-5">
-    <h2 class="mb-4">Survey Query</h2>
+    <h2 class="mb-4" th:text="'Survey Query: ' + ${query}">Survey Query</h2>
     <div class="list-group">
         <div th:each="post, iterStat : ${posts}" class="list-group-item">
             <div class="d-flex w-100 justify-content-between">
@@ -13,6 +18,17 @@
                 <small>Date: <span th:text="${post.dateTime}">Date</span></small>
             </div>
             <p class="mb-1" th:text="${#strings.length(post.text) > 100 ? #strings.substring(post.text, 0, 100) + '...' : post.text}">Post Text</p>
+        </div>
+
+    </div>
+
+    <div class="mt-4 d-flex justify-content-between">
+        <div th:if="${queryId > 1}">
+            <a th:href="@{/survey/page/{id}(id=${queryId - 1})}" class="btn btn-primary">&laquo; 이전 페이지</a>
+        </div>
+
+        <div th:if="${queryId < 20}">
+            <a th:href="@{/survey/page/{id}(id=${queryId + 1})}" class="btn btn-primary">다음 페이지 &raquo;</a>
         </div>
     </div>
 </div>
