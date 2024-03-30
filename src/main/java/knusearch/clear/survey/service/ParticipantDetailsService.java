@@ -27,7 +27,7 @@ public class ParticipantDetailsService implements UserDetailsService {
 
         CustomUserDetails customUserDetails = new CustomUserDetails();
         customUserDetails.setUsername(participant.getUsername());
-        customUserDetails.setPassword(participant.getPassword());
+        customUserDetails.setPassword(encoder.encode(participant.getPassword()));
         customUserDetails.setParticipantId(participant.getId());
 
         return customUserDetails;

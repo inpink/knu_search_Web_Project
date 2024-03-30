@@ -62,7 +62,7 @@ public class SurveyController {
         return "hello";
     }
 
-    @GetMapping("/insertEmptyResults")
+    //@GetMapping("/insertEmptyResults")
     public String insertEmptyResults() {
         surveyResultService.insertEmptyResults();
         return "hello";
