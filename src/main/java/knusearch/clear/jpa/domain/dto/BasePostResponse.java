@@ -3,6 +3,7 @@ package knusearch.clear.jpa.domain.dto;
 import static knusearch.clear.constants.StringConstants.UNDETERMINED;
 
 import java.util.NoSuchElementException;
+
 import knusearch.clear.jpa.domain.classification.Classification;
 import knusearch.clear.jpa.domain.post.BasePost;
 import lombok.AllArgsConstructor;
