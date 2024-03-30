@@ -9,13 +9,10 @@
     <div class="list-group">
         <div th:each="post, iterStat : ${posts}" class="list-group-item">
             <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <span th:text="${post.title}">Post Title</span></h5>
+                <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <span th:text="${post.title}"  th:href="@{${post.url}}">Post Title</span></h5>
                 <small>Date: <span th:text="${post.dateTime}">Date</span></small>
             </div>
             <p class="mb-1" th:text="${#strings.length(post.text) > 100 ? #strings.substring(post.text, 0, 100) + '...' : post.text}">Post Text</p>
-            <p class="mb-1 badge bg-secondary" th:text="${post.classification}">Classification</p>
-            <img th:src="@{${post.image}}" class="img-fluid" alt="Post Image" onerror="this.onerror=null; this.src='https://via.placeholder.com/150';" style="max-height: 150px;">
-            <a th:href="@{${post.url}}" class="btn btn-primary mt-2">Read More</a>
         </div>
     </div>
 </div>

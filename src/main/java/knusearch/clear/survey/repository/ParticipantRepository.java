@@ -1,5 +1,6 @@
-package knusearch.clear.survey;
+package knusearch.clear.survey.repository;
 
+import knusearch.clear.survey.model.Participant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

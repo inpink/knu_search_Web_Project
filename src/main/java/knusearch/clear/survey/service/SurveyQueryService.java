@@ -1,5 +1,7 @@
-package knusearch.clear.survey;
+package knusearch.clear.survey.service;
 
+import knusearch.clear.survey.repository.SurveyQueryRepository;
+import knusearch.clear.survey.model.SurveyQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;

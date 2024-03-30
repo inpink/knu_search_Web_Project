@@ -1,4 +1,4 @@
-package knusearch.clear.survey;
+package knusearch.clear.survey.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;

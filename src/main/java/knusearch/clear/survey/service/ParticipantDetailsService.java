@@ -1,8 +1,10 @@
-package knusearch.clear.survey;
+package knusearch.clear.survey.service;
 
+import knusearch.clear.survey.model.CustomUserDetails;
+import knusearch.clear.survey.repository.ParticipantRepository;
+import knusearch.clear.survey.model.Participant;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.User;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -10,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ParticipantDetailsService implements UserDetailsService {
 
@@ -20,11 +23,13 @@ public class ParticipantDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Participant participant = participantRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        System.out.println(participant.getUsername());
+        log.info(participant.getUsername());
 
-        return User.withUsername(participant.getUsername())
-                .password(encoder.encode(participant.getPassword()))
-                .roles("USER")
-                .build();
+        CustomUserDetails customUserDetails = new CustomUserDetails();
+        customUserDetails.setUsername(participant.getUsername());
+        customUserDetails.setPassword(participant.getPassword());
+        customUserDetails.setParticipantId(participant.getId());
+
+        return customUserDetails;
     }
 }
