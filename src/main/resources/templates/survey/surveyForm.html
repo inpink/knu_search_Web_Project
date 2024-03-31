@@ -14,10 +14,23 @@
     <div class="list-group">
         <div th:each="post, iterStat : ${posts}" class="list-group-item">
             <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <span th:text="${post.title}"  th:href="@{${post.url}}">Post Title</span></h5>
+                <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
                 <small>Date: <span th:text="${post.dateTime}">Date</span></small>
             </div>
             <p class="mb-1" th:text="${#strings.length(post.text) > 100 ? #strings.substring(post.text, 0, 100) + '...' : post.text}">Post Text</p>
+
+            <button class="btn vote-button" th:classappend="${surveyResults[iterStat.index].withoutAiScore == 1} ? 'btn-success' : 'btn-outline-success'"
+                    th:data-participant-id="${surveyResults[iterStat.index].participantId}"
+                    th:data-query-id="${surveyResults[iterStat.index].queryId}"
+                    th:data-post-id="${post.id}"
+                    th:data-vote="1">O</button>
+            <button class="btn vote-button" th:classappend="${surveyResults[iterStat.index].withoutAiScore == 0} ? 'btn-danger' : 'btn-outline-danger'"
+                    th:data-participant-id="${surveyResults[iterStat.index].participantId}"
+                    th:data-query-id="${surveyResults[iterStat.index].queryId}"
+                    th:data-post-id="${post.id}"
+                    th:data-vote="0">X</button>
+
+
         </div>
 
     </div>
@@ -31,7 +44,47 @@
             <a th:href="@{/survey/page/{id}(id=${queryId + 1})}" class="btn btn-primary">다음 페이지 &raquo;</a>
         </div>
     </div>
-</div>
 
+</div>
+<script>
+    $(document).ready(function() {
+        $('.vote-button').click(function() {
+            const participantId = $(this).data('participant-id');
+            const queryId = $(this).data('query-id');
+            const postId = $(this).data('post-id');
+            const vote = $(this).data('vote');
+            updateSurveyResult(participantId, queryId, postId, vote);
+        });
+    });
+
+    function updateSurveyResult(participantId, queryId, postId, vote) {
+        const data = {
+            participantId: participantId,
+            queryId: queryId,
+            postId: postId,
+            vote: vote
+        };
+
+        fetch('/survey/updateSurveyResult', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': $('meta[name="_csrf"]').attr('content') // CSRF 토큰 추가
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            console.log("hi");
+            alert('성공적으로 처리되었습니다!');
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
 </body>
+
+
 </html>

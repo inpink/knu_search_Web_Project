@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -32,5 +34,14 @@ public class SurveyResultService {
                 }
             }
         }
+    }
+
+    public List<SurveyResult> searchByQuery(Long participantId, int queryId) {
+        return surveyResultRepository.findAllByParticipantIdAndQueryId(participantId, queryId);
+    }
+
+
+    public List<SurveyResult> searchByQueryWithAI(Long participantId, int queryId) {
+        return null; //TODO:
     }
 }
