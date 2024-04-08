@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: header}">
+</head>
+<style>
+    .search-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    .section-container {
+        margin-top: 20px;
+    }
+    .custom-container {
+        max-width: 2000px;
+    }
+</style>
+<body>
+<body>
+
+<div class="container custom-container">
+    <div class="row">
+        <div class="col-md-12 search-container">
+            <input type="text" class="form-control" id="searchQuery" placeholder="검색어 입력" style="max-width: 500px;">
+        </div>
+    </div>
+
+    <!-- 새로운 섹션 추가 -->
+    <div class="row section-container">
+        <div class="col-md-3">
+            <input type="checkbox" id="section1Checkbox" checked>
+            <label for="section1Checkbox">1) KNU 기존 홈페이지</label>
+            <div th:each="post, iterStat : ${beforeKNU}" class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
+                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>
+                </div>
+                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <input type="checkbox" id="section2Checkbox" checked>
+            <label for="section2Checkbox">2) BM25</label>
+            <div th:each="post, iterStat : ${bm25}" class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
+                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>
+                </div>
+                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <input type="checkbox" id="section3Checkbox" checked>
+            <label for="section3Checkbox">3) BM25 + ResNet-Transformer 가중치</label>
+            <div th:each="post, iterStat : ${bm25AndAI}" class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
+                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>
+                </div>
+                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <input type="checkbox" id="section4Checkbox" checked>
+            <label for="section4Checkbox">4) ResNet-Transformer 후 BM25</label>
+            <div th:each="post, iterStat : ${AIAndBm25}" class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
+                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>
+                </div>
+                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
