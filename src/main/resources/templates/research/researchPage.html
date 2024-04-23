@@ -21,7 +21,10 @@
 <div class="container custom-container">
     <div class="row">
         <div class="col-md-12 search-container">
-            <input type="text" class="form-control" id="searchQuery" placeholder="검색어 입력" style="max-width: 500px;">
+            <form action="research" method="POST">
+                <input type="text" class="form-control" id="searchQuery" placeholder="검색어 입력" style="max-width: 500px;">
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
         </div>
     </div>
 
