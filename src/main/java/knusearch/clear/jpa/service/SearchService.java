@@ -208,6 +208,11 @@ public class SearchService {
         return sortedPosts;
     }
 
+    public List<BasePostRequest> findTopPostsSortByBM25(String query) {
+        //TODO : BM25 구현 연결
+        return new ArrayList<>();
+    }
+
     private List<Map.Entry<BasePostRequest, Integer>> sortPosts(Map<BasePostRequest, Integer> postWithCount) {
         return postWithCount.entrySet().stream()
                 .sorted(Map.Entry.<BasePostRequest, Integer>comparingByValue(Comparator.reverseOrder())
