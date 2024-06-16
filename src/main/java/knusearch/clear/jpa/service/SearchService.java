@@ -210,6 +210,10 @@ public class SearchService {
 
     public List<BasePostRequest> findTopPostsSortByBM25(String query) {
         //TODO : BM25 구현 연결
+
+
+
+
         return new ArrayList<>();
     }
 
