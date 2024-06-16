@@ -1,12 +1,22 @@
 package knusearch.clear.jpa.domain;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import knusearch.clear.jpa.repository.post.BasePostRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 public class BM25 {
-    private List<Map<String, Integer>> documents; // 문서와 그에 해당하는 단어의 빈도를 저장하는 리스트
+    public List<Map<String, Integer>> documents; // 문서와 그에 해당하는 단어의 빈도를 저장하는 리스트
     private Map<String, Integer> docFreq; // 각 단어가 몇 개의 문서에 등장하는지 저장하는 맵
     private double avgdl; // 모든 문서의 평균 길이
     private int totalDocs; // 총 문서 수
@@ -58,18 +68,28 @@ public class BM25 {
         return score; // 계산된 점수 반환
     }
 
-    public static void main(String[] args) {
-        BM25 bm25 = new BM25();
-        bm25.addDocument(List.of("hello", "world", "java", "programming"));
-        bm25.addDocument(List.of("hello", "java", "code", "project"));
-        bm25.addDocument(List.of("java", "example", "hello"));
-        bm25.addDocument(List.of("unique", "content", "words"));
-        bm25.computeAvgdl(); // 모든 문서를 추가한 후 평균 문서 길이 계산
+    // 따로 빼기
+    public void updateBm25FromServer(String inputText) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+        ObjectMapper mapper = new ObjectMapper();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:5000/updateBm25")) // Python 서버의 URL 주소
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"text\":\"" + inputText + "\"}"))
+                .build();
 
-        List<String> query = List.of("java", "project"); // 검색 쿼리
-        for (int i = 0; i < bm25.documents.size(); i++) {
-            double score = bm25.score(query, i); // 각 문서의 점수 계산
-            System.out.println("Document " + i + " Score: " + score); // 점수 출력
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            // Jackson을 사용하여 JSON 파싱
+            Map<String, List<String>> responseMap = mapper.readValue(response.body(), Map.class);
+            List<String> words = responseMap.get("filtered_words");
+            //System.out.println(words);
+
+            // BM25 문서 추가
+            addDocument(words);
+        } else {
+            System.out.println("Failed to get response: " + response.statusCode());
         }
     }
 }

@@ -41,4 +41,9 @@ public interface BasePostRepository extends JpaRepository<BasePost, Long> {
     @Query("SELECT bp FROM BasePost bp WHERE bp.classification NOT IN (:classifications)")
     List<BasePost> findBasePostsNotInClassifications(@Param("classifications") List<String> classifications,
                                                      Pageable pageable);
+
+
+    // 모든 'title'과 'text'를 연결하여 가져오는 쿼리
+    @Query("SELECT CONCAT(p.title, ' ', p.text) FROM BasePost p")
+    List<String> findAllTitlesAndTexts();
 }
