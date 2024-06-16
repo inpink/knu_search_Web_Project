@@ -1,5 +1,6 @@
 package knusearch.clear.survey.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import knusearch.clear.jpa.domain.dto.BasePostRequest;
 import knusearch.clear.jpa.service.SearchService;
@@ -24,6 +25,7 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @RequestMapping("/survey")
+@Tag(name = "Survey", description = "Survey API")
 public class SurveyController {
 
     private final SurveyResultService surveyResultService;
