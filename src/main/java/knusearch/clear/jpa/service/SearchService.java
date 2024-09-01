@@ -5,6 +5,7 @@ readOnly 속성은 해당 메서드에서 데이터베이스의 읽기 작업만
 이렇게 설정된 메서드는 트랜잭션 커밋 시에 롤백되는 것을 방지하고, 데이터베이스에 대한 읽기 작업을 최적화할 수 있습니다.
  */
 
+import jakarta.persistence.criteria.CriteriaBuilder.In;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -54,34 +55,34 @@ public class SearchService {
     }
 
     public List<BasePostRequest> searchResults(String categoryRecommendChecked,
-                                               List<String> words,
-                                               String query,
-                                               String refinedPredictedClass,
-                                               int size,
-                                               Model model) {
+        List<String> words,
+        String query,
+        String refinedPredictedClass,
+        int size,
+        Model model) {
         if (query.isBlank()) { // 쿼리 없는 경우 연산 안하고 빈 페이지 반환
             return new ArrayList<>();
         }
 
         words.add(query);
-        for (String word : query.split(" ")){
+        for (String word : query.split(" ")) {
             if (!word.isBlank()) {
                 words.add(word);
             }
         }
 
-        words.add(query.replace(" ",""));
+        words.add(query.replace(" ", ""));
         System.out.println("words = " + words);
 
         List<Map.Entry<BasePostRequest, Integer>> searchResultWithCount;
 
-        if (categoryRecommendChecked==null) {
+        if (categoryRecommendChecked == null) {
             System.out.println("분류 사용 X");
             searchResultWithCount = searchAndPosts(words);
         } else {
             System.out.println("분류 사용 O");
             searchResultWithCount = searchAndPostWithBoostClassification(
-                    words, refinedPredictedClass); //검색어의 분류정보
+                words, refinedPredictedClass); //검색어의 분류정보
         }
         // count개수 담은 basepost map 보내기
         model.addAttribute("searchResultWithCount", searchResultWithCount);
@@ -95,63 +96,136 @@ public class SearchService {
 
             // title과 weight만 출력
             System.out.println("Id: " + id
-                    + ", Weight: " + weight
-                    + ", class: " + basePostRequest.classification()
-                    + ", 일치 개수: "+ entry.getValue());
+                + ", Weight: " + weight
+                + ", class: " + basePostRequest.classification()
+                + ", 일치 개수: " + entry.getValue());
         });
 
         // basepost만 따로 리스트로 추출하여 페이지로 보내기
         List<BasePostRequest> basePosts = searchResultWithCount.stream()
-                .map(Map.Entry::getKey)
-                .toList();
+            .map(Map.Entry::getKey)
+            .toList();
 
         // front에서 쉽게 읽을 수 있도록 class 한글로 변환 (record는 불변)
         List<BasePostRequest> updatedBasePosts = basePosts.stream()
-                .map(basePost -> new BasePostRequest(
-                        basePost.id(),
-                        basePost.url(),
-                        basePost.title(),
-                        basePost.text(),
-                        basePost.image(),
-                        basePost.dateTime(),
-                        classificationService.findClassification(basePost.classification()) // 새 classification 값
-                ))
-                .toList();
+            .map(basePost -> new BasePostRequest(
+                basePost.id(),
+                basePost.url(),
+                basePost.title(),
+                basePost.text(),
+                basePost.image(),
+                basePost.dateTime(),
+                classificationService.findClassification(basePost.classification())
+                // 새 classification 값
+            ))
+            .toList();
 
-        return updatedBasePosts.subList(0,10);
+        return updatedBasePosts.subList(0, size);
+    }
+
+
+    public List<BasePostRequest> searchResultsWithSortingAlgorithm(
+        String categoryRecommendChecked,
+        List<String> words,
+        String query,
+        String refinedPredictedClass,
+        int size,
+        Model model
+    ) {
+        if (query.isBlank()) { // 쿼리 없는 경우 연산 안하고 빈 페이지 반환
+            return new ArrayList<>();
+        }
+
+        words.add(query);
+        for (String word : query.split(" ")) {
+            if (!word.isBlank()) {
+                words.add(word);
+            }
+        }
+
+        words.add(query.replace(" ", ""));
+        System.out.println("words = " + words);
+
+        List<Map.Entry<BasePostRequest, Integer>> searchResultWithCount;
+
+        if (categoryRecommendChecked == null) {
+            System.out.println("분류 사용 X");
+            searchResultWithCount = searchAndPosts(words);
+        } else {
+            System.out.println("분류 사용 O");
+            searchResultWithCount = searchAndPostWithoutBoostClassification(
+                words, refinedPredictedClass); //검색어의 분류정보
+        }
+        // count개수 담은 basepost map 보내기
+        model.addAttribute("searchResultWithCount", searchResultWithCount);
+        // searchResultWithCount 리스트를 순회하면서 각 항목의 title과 weight만 로그로 출력
+        searchResultWithCount.forEach(entry -> {
+            BasePostRequest basePostRequest = entry.getKey(); // BasePostRequest 객체
+            Integer weight = entry.getValue(); // 해당 객체의 weight
+
+            // BasePostRequest에서 id 가져오기
+            Long id = basePostRequest.id(); // record의 경우 직접 필드에 접근할 수 있습니다.
+
+            // title과 weight만 출력
+            System.out.println("Id: " + id
+                + ", Weight: " + weight
+                + ", class: " + basePostRequest.classification()
+                + ", 일치 개수: " + entry.getValue());
+        });
+
+        // basepost만 따로 리스트로 추출하여 페이지로 보내기
+        List<BasePostRequest> basePosts = searchResultWithCount.stream()
+            .map(Map.Entry::getKey)
+            .toList();
+
+        // front에서 쉽게 읽을 수 있도록 class 한글로 변환 (record는 불변)
+        List<BasePostRequest> updatedBasePosts = basePosts.stream()
+            .map(basePost -> new BasePostRequest(
+                basePost.id(),
+                basePost.url(),
+                basePost.title(),
+                basePost.text(),
+                basePost.image(),
+                basePost.dateTime(),
+                classificationService.findClassification(basePost.classification())
+                // 새 classification 값
+            ))
+            .toList();
+
+        return updatedBasePosts.subList(0, size);
     }
 
     public Page<BasePostRequest> searchResultsToPage(String categoryRecommendChecked,
-                                                     List<String> words,
-                                                     String query,
-                                                     String refinedPredictedClass,
-                                                     int page,
-                                                     int size,
-                                                     Model model
+        List<String> words,
+        String query,
+        String refinedPredictedClass,
+        int page,
+        int size,
+        Model model
     ) {
         if (query.isBlank()) { // 쿼리 없는 경우 연산 안하고 빈 페이지 반환
             return listToPage(new ArrayList<>(), page, size);
         }
 
         words.add(query);
-        for (String word : query.split(" ")){
+        for (String word : query.split(" ")) {
             if (!word.isBlank()) {
                 words.add(word);
             }
         }
 
-        words.add(query.replace(" ",""));
+        words.add(query.replace(" ", ""));
         System.out.println("words = " + words);
 
         List<Map.Entry<BasePostRequest, Integer>> searchResultWithCount;
 
-        if (categoryRecommendChecked==null) {
+        if (categoryRecommendChecked == null) {
             System.out.println("분류 사용 X");
             searchResultWithCount = searchAndPosts(words);
         } else {
             System.out.println("분류 사용 O");
             searchResultWithCount = searchAndPostWithBoostClassification(
-                    words, refinedPredictedClass); //검색어의 분류정보
+                words, refinedPredictedClass); //검색어의 분류정보
         }
         // count개수 담은 basepost map 보내기
         model.addAttribute("searchResultWithCount", searchResultWithCount);
@@ -165,28 +239,29 @@ public class SearchService {
 
             // title과 weight만 출력
             System.out.println("Id: " + id
-                    + ", Weight: " + weight
-                    + ", class: " + basePostRequest.classification()
-                    + ", 일치 개수: "+ entry.getValue());
+                + ", Weight: " + weight
+                + ", class: " + basePostRequest.classification()
+                + ", 일치 개수: " + entry.getValue());
         });
 
         // basepost만 따로 리스트로 추출하여 페이지로 보내기
         List<BasePostRequest> basePosts = searchResultWithCount.stream()
-                .map(Map.Entry::getKey)
-                .toList();
+            .map(Map.Entry::getKey)
+            .toList();
 
         // front에서 쉽게 읽을 수 있도록 class 한글로 변환 (record는 불변)
         List<BasePostRequest> updatedBasePosts = basePosts.stream()
-                .map(basePost -> new BasePostRequest(
-                        basePost.id(),
-                        basePost.url(),
-                        basePost.title(),
-                        basePost.text(),
-                        basePost.image(),
-                        basePost.dateTime(),
-                        classificationService.findClassification(basePost.classification()) // 새 classification 값
-                ))
-                .toList();
+            .map(basePost -> new BasePostRequest(
+                basePost.id(),
+                basePost.url(),
+                basePost.title(),
+                basePost.text(),
+                basePost.image(),
+                basePost.dateTime(),
+                classificationService.findClassification(basePost.classification())
+                // 새 classification 값
+            ))
+            .toList();
 
         return listToPage(updatedBasePosts, page, size);
     }
@@ -204,29 +279,39 @@ public class SearchService {
         return new PageImpl<>(subList, pageRequest, list.size());
     }
 
-    public List<Map.Entry<BasePostRequest, Integer>> searchAndPostWithBoostClassification(List<String> words,
-                                                                                          String classification) {
+    public List<Map.Entry<BasePostRequest, Integer>> searchAndPostWithBoostClassification(
+        List<String> words,
+        String classification) {
         Map<BasePostRequest, Integer> postWithCount = calculateCount(words);
 
         Map<BasePostRequest, Integer> postWithCountAndClass = countClassificationWeight(
-                postWithCount,
-                classification);
+            postWithCount,
+            classification,
+            2);
 
         return sortPosts(postWithCountAndClass);
     }
 
+    public List<Map.Entry<BasePostRequest, Integer>> searchAndPostWithoutBoostClassification(
+        List<String> words,
+        String classification) {
+        Map<BasePostRequest, Integer> postWithCount = calculateCount(words);
+
+        return sortPosts(postWithCount);
+    }
+
     private Map<BasePostRequest, Integer> countClassificationWeight(
-            Map<BasePostRequest, Integer> postWithCount,
-            String classification) {
+        Map<BasePostRequest, Integer> postWithCount,
+        String classification,
+        int weight) {
         Map<BasePostRequest, Integer> withClass = new HashMap<>();
 
         /*final int weight = postWithCount.values().stream()
                 .max(Integer::compare).get() / 2;*/
-        final int weight = 12;
 
         postWithCount.forEach((post, count) -> {
             if (classification.equals(post.classification())) {
-                withClass.put(post, count * weight / 10);
+                withClass.put(post, count * weight);
             } else {
                 withClass.put(post, count);
             }
@@ -244,18 +329,21 @@ public class SearchService {
     private Map<BasePostRequest, Integer> calculateCount(List<String> words) {
         Set<BasePostRequest> allPosts = findAllPostsByTitleAndText(words);
 
-        Map<BasePostRequest, Integer> postWithCount = countQueryOccurrencesInTitles(allPosts, words);
+        Map<BasePostRequest, Integer> postWithCount = countQueryOccurrencesInTitles(allPosts,
+            words);
         return postWithCount;
     }
 
     private Set<BasePostRequest> findAllPostsByTitleAndText(List<String> words) {
         Set<BasePostRequest> allPosts = new HashSet<>();
         for (String word : words) {
-            if (word.isBlank()) continue;
+            if (word.isBlank()) {
+                continue;
+            }
 
             List<BasePostRequest> posts = basePostRepository.findByTitleOrTextQuery(
-                    word,
-                    word);
+                word,
+                word);
 
             for (BasePostRequest post : posts) {
                 allPosts.add(post);
@@ -269,32 +357,25 @@ public class SearchService {
         Set<BasePostRequest> allPosts = findAllPostsByTitleAndText(words);
 
         List<BasePostRequest> sortedPosts = allPosts.stream()
-                .sorted((post1, post2) -> post2.dateTime().compareTo(post1.dateTime()))
-                .limit(10)
-                .collect(Collectors.toList());
+            .sorted((post1, post2) -> post2.dateTime().compareTo(post1.dateTime()))
+            .limit(5)
+            .collect(Collectors.toList());
 
         return sortedPosts;
     }
 
-    public List<BasePostRequest> findTopPostsSortByBM25(String query) {
-        //TODO : BM25 구현 연결
-
-
-
-
-        return new ArrayList<>();
-    }
-
-    private List<Map.Entry<BasePostRequest, Integer>> sortPosts(Map<BasePostRequest, Integer> postWithCount) {
+    private List<Map.Entry<BasePostRequest, Integer>> sortPosts(
+        Map<BasePostRequest, Integer> postWithCount) {
         return postWithCount.entrySet().stream()
-                .sorted(Map.Entry.<BasePostRequest, Integer>comparingByValue(Comparator.reverseOrder())
-                        .thenComparing(entry -> entry.getKey().dateTime(), Comparator.reverseOrder())
-                        .thenComparing(entry -> entry.getKey().id()))
-                .toList();
+            .sorted(Map.Entry.<BasePostRequest, Integer>comparingByValue(Comparator.reverseOrder())
+                .thenComparing(entry -> entry.getKey().dateTime(), Comparator.reverseOrder())
+                .thenComparing(entry -> entry.getKey().id()))
+            .toList();
     }
 
-    public Map<BasePostRequest, Integer> countQueryOccurrencesInTitles(Set<BasePostRequest> allPosts,
-                                                                       List<String> words) {
+    public Map<BasePostRequest, Integer> countQueryOccurrencesInTitles(
+        Set<BasePostRequest> allPosts,
+        List<String> words) {
         // 게시글 별 점수
         final Map<BasePostRequest, Integer> postCount = new HashMap<>();
 
@@ -314,8 +395,10 @@ public class SearchService {
             Map<String, Integer> wordCount = new HashMap<>(); // 사회 :3 , 복지 : 1 ..
 
             for (String word : words) { // 사회 복지 학부 졸업
-                final int titleCount = (title.length() - title.replace(word, "").length()) / word.length();
-                final int textCount = (text.length() - text.replace(word, "").length()) / word.length();
+                final int titleCount =
+                    (title.length() - title.replace(word, "").length()) / word.length();
+                final int textCount =
+                    (text.length() - text.replace(word, "").length()) / word.length();
                 final int currentCount = (titleCount + textCount);
 
                 Integer[] minMax = wordMinMaxCounts.get(word);
@@ -345,7 +428,8 @@ public class SearchService {
 
         System.out.println("wordMinMaxCounts = ");
         for (Map.Entry<String, Integer[]> entry : wordMinMaxCounts.entrySet()) {
-            System.out.println(entry.getKey() + " " + entry.getValue()[0] + " " + entry.getValue()[1]);
+            System.out.println(
+                entry.getKey() + " " + entry.getValue()[0] + " " + entry.getValue()[1]);
         }
 
 /*        System.out.println("postCount = ");
@@ -357,7 +441,7 @@ public class SearchService {
 
     // 정규화 점수
     private static double calculatePostScore(Map<String, Integer> postCounts,
-                                             Map<String, Integer[]> wordMinMaxCounts) {
+        Map<String, Integer[]> wordMinMaxCounts) {
         double score = 0.0;
 
         for (Map.Entry<String, Integer> entry : postCounts.entrySet()) {
@@ -380,4 +464,5 @@ public class SearchService {
         }
         return (double) (value - min) / (max - min);
     }
+
 }

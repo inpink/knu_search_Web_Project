@@ -44,7 +44,6 @@ public class ResearchController {
     public String researchResult(@RequestParam("query") String query, Model model) {
         List<BasePostRequest> beforeKNU = searchService.findTopPostsSortByReverseTime(query);
 
-        // 분류 메뉴 모델로부터 받아오기
         Map<String, Object> predictedAndTokens = classificationService.predictClassification(query);
         String predictedClass = (String) predictedAndTokens.get("predictedClass");
         List<String> words = (List<String>) predictedAndTokens.get("words");
@@ -57,12 +56,21 @@ public class ResearchController {
                 words,
                 query,
                 refinedPredictedClass,
-                10,
+                5,
                 model);
+
+        List<BasePostRequest> sortingAlgorithm = searchService.searchResultsWithSortingAlgorithm(
+                "true",
+                words,
+                query,
+                refinedPredictedClass,
+                5,
+                model
+        );
 
         model.addAttribute("beforeKNU", beforeKNU);
         model.addAttribute("resnetTransformer", resnetTransformer);
-
+        model.addAttribute("sortingAlgorithm", sortingAlgorithm);
         return "research/researchPage";
     }
 }

@@ -42,8 +42,19 @@
             </div>
         </div>
         <div class="col-md-3">
-            <input type="checkbox" id="section4Checkbox" checked>
-            <label for="section4Checkbox">2) ResNet-Transformer</label>
+            <input type="checkbox" id="section2Checkbox" checked>
+            <label for="section2Checkbox">2) Sorting Algorithm</label>
+            <div th:each="post, iterStat : ${sortingAlgorithm}" class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
+                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>
+                </div>
+                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <input type="checkbox" id="section3Checkbox" checked>
+            <label for="section3Checkbox">2) Sorting Algorithm + ResNet_Transformer</label>
             <div th:each="post, iterStat : ${resnetTransformer}" class="list-group-item">
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
