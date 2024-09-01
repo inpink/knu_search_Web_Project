@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Slf4j
 public class HomeController {
 
-
     @GetMapping("/")
     public String home(Model model) {
         log.info("home controller");

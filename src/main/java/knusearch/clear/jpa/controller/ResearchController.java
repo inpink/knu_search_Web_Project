@@ -1,11 +1,16 @@
 package knusearch.clear.jpa.controller;
 
 import knusearch.clear.jpa.domain.dto.BasePostRequest;
+import knusearch.clear.jpa.service.ClassificationService;
 import knusearch.clear.jpa.service.SearchService;
 import knusearch.clear.survey.service.SurveyQueryService;
 import knusearch.clear.survey.service.SurveyResultService;
+import knusearch.clear.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequiredArgsConstructor
@@ -21,36 +27,41 @@ import java.util.List;
 public class ResearchController {
 
     private final SurveyResultService surveyResultService;
+    private final ClassificationService classificationService;
     private final SurveyQueryService surveyQueryService;
     private final SearchService searchService; //테스트용이라 바꿔야함
 
     @GetMapping("/research")
     public String researchPage(Model model) {
         List<BasePostRequest> beforeKNU = new ArrayList<>();
-        List<BasePostRequest> bm25 = new ArrayList<>();
-        List<BasePostRequest> bm25AndAI = new ArrayList<>();
-        List<BasePostRequest> AIAndBm25 = new ArrayList<>();
-
+        List<BasePostRequest> resnetTransformer = new ArrayList<>();
         model.addAttribute("beforeKNU", beforeKNU);
-        model.addAttribute("bm25", bm25);
-        model.addAttribute("bm25AndAI", bm25AndAI);
-        model.addAttribute("AIAndBm25", AIAndBm25);
 
         return "research/researchPage";
     }
 
     @GetMapping("/research/result")
-    public String researchResult(@RequestParam("query") String query,
-                                     Model model) {
+    public String researchResult(@RequestParam("query") String query, Model model) {
         List<BasePostRequest> beforeKNU = searchService.findTopPostsSortByReverseTime(query);
-        List<BasePostRequest> bm25 = searchService.findTopPostsSortByBM25(query);
-        List<BasePostRequest> bm25AndAI = new ArrayList<>();
-        List<BasePostRequest> AIAndBm25 = new ArrayList<>();
+
+        // 분류 메뉴 모델로부터 받아오기
+        Map<String, Object> predictedAndTokens = classificationService.predictClassification(query);
+        String predictedClass = (String) predictedAndTokens.get("predictedClass");
+        List<String> words = (List<String>) predictedAndTokens.get("words");
+        String refinedPredictedClass = StringUtil.deleteLineSeparator(predictedClass);
+
+        model.addAttribute("predictedClass", predictedClass);
+
+        List<BasePostRequest> resnetTransformer = searchService.searchResults(
+                "true",
+                words,
+                query,
+                refinedPredictedClass,
+                10,
+                model);
 
         model.addAttribute("beforeKNU", beforeKNU);
-        model.addAttribute("bm25", bm25);
-        model.addAttribute("bm25AndAI", bm25AndAI);
-        model.addAttribute("AIAndBm25", AIAndBm25);
+        model.addAttribute("resnetTransformer", resnetTransformer);
 
         return "research/researchPage";
     }

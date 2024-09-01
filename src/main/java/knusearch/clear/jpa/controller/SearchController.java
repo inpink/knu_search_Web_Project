@@ -14,7 +14,6 @@ import knusearch.clear.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
@@ -101,7 +100,7 @@ public class SearchController {
 
         // 검색하기
         Pageable pageable = PageRequest.of(page, size);
-        Page<BasePostRequest> searchResult = searchService.searchResults(
+        Page<BasePostRequest> searchResult = searchService.searchResultsToPage(
                 searchForm.getCategoryRecommendChecked(),
                 words,
                 searchForm.getSearchQuery(),

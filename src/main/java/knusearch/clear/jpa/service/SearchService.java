@@ -53,13 +53,81 @@ public class SearchService {
         return sites;
     }
 
-    public Page<BasePostRequest> searchResults(String categoryRecommendChecked,
+    public List<BasePostRequest> searchResults(String categoryRecommendChecked,
                                                List<String> words,
                                                String query,
                                                String refinedPredictedClass,
-                                               int page,
                                                int size,
-                                               Model model
+                                               Model model) {
+        if (query.isBlank()) { // 쿼리 없는 경우 연산 안하고 빈 페이지 반환
+            return new ArrayList<>();
+        }
+
+        words.add(query);
+        for (String word : query.split(" ")){
+            if (!word.isBlank()) {
+                words.add(word);
+            }
+        }
+
+        words.add(query.replace(" ",""));
+        System.out.println("words = " + words);
+
+        List<Map.Entry<BasePostRequest, Integer>> searchResultWithCount;
+
+        if (categoryRecommendChecked==null) {
+            System.out.println("분류 사용 X");
+            searchResultWithCount = searchAndPosts(words);
+        } else {
+            System.out.println("분류 사용 O");
+            searchResultWithCount = searchAndPostWithBoostClassification(
+                    words, refinedPredictedClass); //검색어의 분류정보
+        }
+        // count개수 담은 basepost map 보내기
+        model.addAttribute("searchResultWithCount", searchResultWithCount);
+        // searchResultWithCount 리스트를 순회하면서 각 항목의 title과 weight만 로그로 출력
+        searchResultWithCount.forEach(entry -> {
+            BasePostRequest basePostRequest = entry.getKey(); // BasePostRequest 객체
+            Integer weight = entry.getValue(); // 해당 객체의 weight
+
+            // BasePostRequest에서 id 가져오기
+            Long id = basePostRequest.id(); // record의 경우 직접 필드에 접근할 수 있습니다.
+
+            // title과 weight만 출력
+            System.out.println("Id: " + id
+                    + ", Weight: " + weight
+                    + ", class: " + basePostRequest.classification()
+                    + ", 일치 개수: "+ entry.getValue());
+        });
+
+        // basepost만 따로 리스트로 추출하여 페이지로 보내기
+        List<BasePostRequest> basePosts = searchResultWithCount.stream()
+                .map(Map.Entry::getKey)
+                .toList();
+
+        // front에서 쉽게 읽을 수 있도록 class 한글로 변환 (record는 불변)
+        List<BasePostRequest> updatedBasePosts = basePosts.stream()
+                .map(basePost -> new BasePostRequest(
+                        basePost.id(),
+                        basePost.url(),
+                        basePost.title(),
+                        basePost.text(),
+                        basePost.image(),
+                        basePost.dateTime(),
+                        classificationService.findClassification(basePost.classification()) // 새 classification 값
+                ))
+                .toList();
+
+        return updatedBasePosts.subList(0,10);
+    }
+
+    public Page<BasePostRequest> searchResultsToPage(String categoryRecommendChecked,
+                                                     List<String> words,
+                                                     String query,
+                                                     String refinedPredictedClass,
+                                                     int page,
+                                                     int size,
+                                                     Model model
     ) {
         if (query.isBlank()) { // 쿼리 없는 경우 연산 안하고 빈 페이지 반환
             return listToPage(new ArrayList<>(), page, size);
@@ -202,7 +270,7 @@ public class SearchService {
 
         List<BasePostRequest> sortedPosts = allPosts.stream()
                 .sorted((post1, post2) -> post2.dateTime().compareTo(post1.dateTime()))
-                .limit(5)
+                .limit(10)
                 .collect(Collectors.toList());
 
         return sortedPosts;
