@@ -51,6 +51,11 @@ public class ResearchController {
 
         model.addAttribute("predictedClass", predictedClass);
 
+        List<BasePostRequest> knuPlusAi = searchService.knuPlusAi(
+            query,
+            refinedPredictedClass,
+            5);
+
         List<BasePostRequest> resnetTransformer = searchService.searchResults(
                 "true",
                 words,
@@ -69,6 +74,7 @@ public class ResearchController {
         );
 
         model.addAttribute("beforeKNU", beforeKNU);
+        model.addAttribute("knuPlusAi", knuPlusAi);
         model.addAttribute("resnetTransformer", resnetTransformer);
         model.addAttribute("sortingAlgorithm", sortingAlgorithm);
         return "research/researchPage";

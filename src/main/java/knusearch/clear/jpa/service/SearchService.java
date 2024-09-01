@@ -465,4 +465,35 @@ public class SearchService {
         return (double) (value - min) / (max - min);
     }
 
+    public List<BasePostRequest> knuPlusAi(String query, String refinedPredictedClass, int size) {
+        List<String> words = Arrays.asList(query.split(" "));
+        Set<BasePostRequest> allPosts = findAllPostsByTitleAndTextAndSameClass(words,refinedPredictedClass);
+
+        List<BasePostRequest> sortedPosts = allPosts.stream()
+            .sorted((post1, post2) -> post2.dateTime().compareTo(post1.dateTime()))
+            .limit(size)
+            .collect(Collectors.toList());
+
+        return sortedPosts;
+    }
+
+    private Set<BasePostRequest> findAllPostsByTitleAndTextAndSameClass(List<String> words, String predictedClass) {
+        Set<BasePostRequest> allPosts = new HashSet<>();
+        for (String word : words) {
+            if (word.isBlank()) {
+                continue;
+            }
+
+            List<BasePostRequest> posts = basePostRepository.findByTitleOrTextQuery(
+                word,
+                word);
+
+            for (BasePostRequest post : posts) {
+                if (post.classification().equals(predictedClass)) {
+                    allPosts.add(post);
+                }
+            }
+        }
+        return allPosts;
+    }
 }
