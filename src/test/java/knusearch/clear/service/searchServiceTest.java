@@ -91,7 +91,7 @@ public class searchServiceTest {
                 .thenReturn(Arrays.asList(post1, post2));
 
         // When
-        List<Map.Entry<BasePostRequest, Integer>> result = searchService.searchAndPosts(
+        List<Map.Entry<BasePostRequest, Integer>> result = searchService.searchAndPostWithoutBoostClassification(
                 List.of(searchQuery));
 
         // Then
