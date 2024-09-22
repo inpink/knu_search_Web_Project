@@ -26,9 +26,7 @@ import java.util.Map;
 @Slf4j
 public class ResearchController {
 
-    private final SurveyResultService surveyResultService;
     private final ClassificationService classificationService;
-    private final SurveyQueryService surveyQueryService;
     private final SearchService searchService; //테스트용이라 바꿔야함
 
     @GetMapping("/research")
@@ -60,16 +58,13 @@ public class ResearchController {
             refinedPredictedClass,
             5);
 
-        List<BasePostRequest> resnetTransformer = searchService.searchResults(
-                "true",
+        List<BasePostRequest> sortingAlgorithm = searchService.searchResults(
                 words,
                 query,
-                refinedPredictedClass,
                 5,
                 model);
 
-        List<BasePostRequest> sortingAlgorithm = searchService.searchResultsWithSortingAlgorithm(
-                "true",
+        List<BasePostRequest>  sortingResnetTransformer = searchService.searchResultsWithSortingAlgorithm(
                 words,
                 query,
                 refinedPredictedClass,
@@ -79,8 +74,9 @@ public class ResearchController {
 
         model.addAttribute("beforeKNU", beforeKNU);
         model.addAttribute("knuPlusAi", knuPlusAi);
-        model.addAttribute("resnetTransformer", resnetTransformer);
         model.addAttribute("sortingAlgorithm", sortingAlgorithm);
+        model.addAttribute("resnetTransformer", sortingResnetTransformer);
+
         return "research/researchPage";
     }
 }
