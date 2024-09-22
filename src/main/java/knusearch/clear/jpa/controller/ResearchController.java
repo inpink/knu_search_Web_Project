@@ -42,7 +42,7 @@ public class ResearchController {
 
     @GetMapping("/research/result")
     public String researchResult(@RequestParam("query") String query, Model model) {
-        if (!query.matches("[가-힣]+")) {
+        if (!query.matches("[가-힣\\s]+")) {
             return "research/researchErrorPage";
         }
 
