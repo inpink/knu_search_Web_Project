@@ -33,7 +33,7 @@ public class ClassificationService {
     @Transactional
     public Map<String, Object> predictClassification(final String searchQuery) {
         // Flask 서버에 요청을 보내기 위한 데이터 구성
-        String flaskEndpoint = "http://127.0.0.1:5000/predict"; // Flask 서버의 URL
+        String flaskEndpoint = "http://13.209.132.169:5000/predict"; // Flask 서버의 URL
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("text", searchQuery);
 
