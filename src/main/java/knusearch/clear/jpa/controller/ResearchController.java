@@ -42,6 +42,10 @@ public class ResearchController {
 
     @GetMapping("/research/result")
     public String researchResult(@RequestParam("query") String query, Model model) {
+        if (!query.matches("[가-힣]+")) {
+            return "research/researchErrorPage";
+        }
+
         List<BasePostRequest> beforeKNU = searchService.findTopPostsSortByReverseTime(query);
 
         Map<String, Object> predictedAndTokens = classificationService.predictClassification(query);
