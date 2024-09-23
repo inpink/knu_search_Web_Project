@@ -5,43 +5,22 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
 import java.time.LocalDate;
 
-import java.util.HashSet;
-import java.util.Set;
 import knusearch.clear.constants.StringConstants;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
 @Entity
 @Getter
 @Setter
-@ToString
 public class BasePost {
-    /* 굳이 추상클래스로 두지말자(엔티티는 특정 비지니스 로직을 담고있기 때문에 조금만 달라져도 재사용이 어려움
-      https://www.inflearn.com/questions/63567/%EC%95%88%EB%85%95%ED%95%98%EC%8B%AD%EB%8B%88%EA%B9%8C-%EB%8F%84%EB%A9%94%EC%9D%B8-%EC%84%A4%EA%B3%84%EC%8B%9C-%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4-%EC%B6%94%EC%83%81%ED%81%B4%EB%9E%98%EC%8A%A4-%EC%97%90-%EB%8C%80%ED%95%9C-%EC%9D%98%EA%B2%AC%EC%9D%84-%EB%93%A3%EA%B3%A0-%EC%8B%B6%EC%8A%B5%EB%8B%88%EB%8B%A4
-        직접 사용해보니 굳이 PostMain이랑 PostIct의 구분을 둘만한 지점이 없었음. 오히려 이들을 분리함으로서 복잡해지기만 함.
-*/
-
-    //게시글 테이블에 공통적으로 쓰이는 필드를 담음(추상화)  //많은 경우 추상화를 통해 의존관계 역전을 달성하는 것이 일반적
-    //URL3종(scrtWrtiYn, encMenuSeq,encMenuBoardSeq) 제목, 본문, 이미지 링크(여러개 할거면 또 테이블 필요함), 날짜, 사이트 번호
-    //추상클래스!
-    //자바에서 abstract class와 default interface 둘 다를 쓸 수 있으면 후자를 선택하는 이유
-    // => 대표적으로 다중 상속 가능, API 디자인 가능
-    // => 생성자가 꼭 필요한 경우에는 abstract class 사용할 것
-    // => 하지만 Effective Java에서 생성자 조차 "정적 팩터리 메서드"로 대체하는 것을 추천한다고 했음
-    // => 하지만 여기서는 private field가 필요하므로 abstract class를 썼다
-    //결론 : 상황에 맞게 선택할 것
 
     public static final int TEXT_COLUMN_LENGTH = 40000;
-    public static final int IMAGE_COLUMN_LENGTH = 8000; //외부에서도 사용하고 쉽게 뜻을 알 수 있게 static final
+    public static final int IMAGE_COLUMN_LENGTH = 8000;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -79,13 +58,6 @@ public class BasePost {
     //유형 일치 중요
     @Temporal(TemporalType.DATE)
     private LocalDate dateTime;
-
-    @ManyToMany
-    @JoinTable(
-        name = "post_terms",
-        joinColumns = @JoinColumn(name = "post_id"),
-        inverseJoinColumns = @JoinColumn(name = "term_id"))
-    private Set<Term> terms = new HashSet<>();
 
     //==생성 메서드==//
     public static BasePost createBasePost(String site, String url,
