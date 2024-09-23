@@ -1,5 +1,6 @@
 package knusearch.clear.jpa.repository.post;
 
+import java.util.List;
 import knusearch.clear.jpa.domain.post.Term;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,9 @@ public interface TermRepository extends JpaRepository<Term, Long> {
     Term findByTerm(String term);
 
     // 특정 단어가 등장한 문서 수 계산
-    @Query("SELECT COUNT(DISTINCT p) FROM BasePost p JOIN p.terms t WHERE t.term = :term")
+    @Query("SELECT COUNT(DISTINCT pt.basePost) FROM PostTerm pt WHERE pt.term.term = :term")
     long countDocumentsWithTerm(@Param("term") String term);
+
+    List<Term> findByTermIn(List<String> termTexts);
+
 }

@@ -1,15 +1,24 @@
 package knusearch.clear.jpa.service.post;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 import knusearch.clear.jpa.domain.dto.BasePostClassifyResponse;
 import knusearch.clear.jpa.domain.post.BasePost;
+import knusearch.clear.jpa.domain.post.PostTerm;
 import knusearch.clear.jpa.domain.post.Term;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
+import knusearch.clear.jpa.repository.post.PostTermJdbcRepository;
+import knusearch.clear.jpa.repository.post.PostTermRepository;
+import knusearch.clear.jpa.repository.post.TermJdbcRepository;
 import knusearch.clear.jpa.repository.post.TermRepository;
 import knusearch.clear.jpa.service.CrawlService;
 import lombok.RequiredArgsConstructor;
@@ -40,35 +49,86 @@ public class BasePostService {
 
     private final TermRepository termRepository;
 
+    // 스레드 안전한 ConcurrentHashMap을 사용하여 Term 캐싱
+    private final ConcurrentMap<String, Term> termCache = new ConcurrentHashMap<>();
+    private final PostTermRepository postTermRepository;
+    private final PostTermJdbcRepository postTermJdbcRepository;
+    private final TermJdbcRepository termJdbcRepository;
+
     //Transactional을 먹여줘서, CrawlController의 하나의 method에서 요구한 모든 작업이 끝난 뒤에 DB에 Commit된다!
     //CrawlController의 하나의 메소드에서는 postIctService.crawlUpdate(); 이런식으로 호출되었다.
     //이 메소드가 완전히 끝나야만 DB에 Commit된다. 그 전에 작업 중에는 repo.save가 실행돼도 실제로 DB에 반영되지 않는다는 것이다!
+
+    @Transactional
+    public void saveAllTermPosts() {
+        List<BasePost> basePosts = basePostRepository.findAll();
+        for (BasePost post : basePosts) {
+            saveTermPost(post);
+        }
+    }
 
     /**
      * 게시글을 저장하고, 해당 게시글의 단어를 추출하여 저장
      * @param post 게시글 객체
      * @return 저장된 게시글
      */
-    @Transactional
-    public BasePost saveTermPost(BasePost post) {
+    private void saveTermPost(BasePost post) {
         // 게시글의 내용을 분석하여 단어를 추출
-        Set<Term> terms = extractTermsFromContent(post.getTitle()+post.getText());
+        Set<Term> terms = extractTermsFromContent(post.getTitle() + post.getText());
 
-        // 추출한 단어들을 Term 테이블에 저장
-        for (Term term : terms) {
-            // 중복된 단어가 있으면 기존 데이터를 가져오고, 없으면 새로 저장
-            Term existingTerm = termRepository.findByTerm(term.getTerm());
-            if (existingTerm != null) {
-                term = existingTerm;  // 이미 존재하는 Term을 재사용
+        List<String> termTexts = terms.stream()
+            .map(Term::getTerm)
+            .collect(Collectors.toList());
+
+        // 캐시에서 먼저 단어 확인
+        Map<String, Term> cachedTerms = new HashMap<>();
+        List<String> missingTerms = new ArrayList<>();
+
+        for (String termText : termTexts) {
+            Term cachedTerm = termCache.get(termText);
+            if (cachedTerm != null) {
+                cachedTerms.put(termText, cachedTerm);
             } else {
-                termRepository.save(term);
+                missingTerms.add(termText); // 캐시에 없는 단어 수집
             }
-            // Post와 Term을 연관 지음
-            post.getTerms().add(term);
         }
 
-        // 게시글 저장
-        return basePostRepository.save(post);
+        // 캐시에 없는 단어들을 한 번에 DB에서 조회
+        if (!missingTerms.isEmpty()) {
+            List<Term> foundTerms = termRepository.findByTermIn(missingTerms);
+            Map<String, Term> foundTermsMap = foundTerms.stream()
+                .collect(Collectors.toMap(Term::getTerm, term -> term));
+
+            // DB에서 찾은 단어는 캐시에 추가
+            foundTermsMap.forEach((key, value) -> {
+                cachedTerms.put(key, value);
+                termCache.put(key, value);  // 캐시에 저장
+            });
+
+            // DB에도 없던 단어는 새로 생성하고 캐시에 추가
+            missingTerms.removeAll(foundTermsMap.keySet());  // 이미 DB에서 찾은 단어는 제외
+            List<Term> newTerms = new ArrayList<>();
+            for (String termText : missingTerms) {
+                Term newTerm = new Term();
+                newTerm.setTerm(termText);
+                newTerms.add(newTerm);
+                cachedTerms.put(termText, newTerm);
+                termCache.put(termText, newTerm);  // 캐시에 저장
+            }
+
+            termJdbcRepository.saveAll(newTerms);
+        }
+
+        // Post와 Term 연관
+        List<PostTerm> postTerms = new ArrayList<>();
+        for (Term term : cachedTerms.values()) {
+            PostTerm postTerm = new PostTerm();
+            postTerm.setBasePost(post);
+            postTerm.setTerm(term);
+
+            postTerms.add(postTerm);
+        }
+        postTermJdbcRepository.saveAll(postTerms);
     }
 
     // 특수문자에 대한 필터링 조건
@@ -231,11 +291,11 @@ public class BasePostService {
 
     private static List<BasePostClassifyResponse> transformToClassifyResponse(List<BasePost> basePosts) {
         return basePosts.stream()
-                .map(basePost -> new BasePostClassifyResponse(
-                        basePost.getId(),
-                        basePost.getClassification(),
-                        basePost.getTitle()))
-                .toList();
+            .map(basePost -> new BasePostClassifyResponse(
+                basePost.getId(),
+                basePost.getClassification(),
+                basePost.getTitle()))
+            .toList();
     }
 
     private static ArrayList<BasePostClassifyResponse> generateEmptyResponse() {
@@ -269,14 +329,14 @@ public class BasePostService {
         }
 
         posts.stream()
-                .forEach(post -> updateClassification(post, classification));
+            .forEach(post -> updateClassification(post, classification));
     }
 
     @Transactional
     public List<BasePostClassifyResponse> findBasePostsNotInClassifications(List<String> classifications) {
         List<BasePost> posts = basePostRepository.findBasePostsNotInClassifications(
-                classifications,
-                PageRequest.of(0, 5));
+            classifications,
+            PageRequest.of(0, 5));
 
         return transformToClassifyResponse(posts);
     }
@@ -288,7 +348,7 @@ public class BasePostService {
 
     public String[] getAllPostUrl() {
         return new String[]{"f19069e6134f8f8aa7f689a4a675e66f.do",
-                "e4058249224f49ab163131ce104214fb.do"};
+            "e4058249224f49ab163131ce104214fb.do"};
         //공지사항,  행사/안내 등
     }
 }
