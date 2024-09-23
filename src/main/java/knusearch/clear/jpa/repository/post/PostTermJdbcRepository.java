@@ -17,7 +17,7 @@ public class PostTermJdbcRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    private int batchSize = 500;
+    private int batchSize = 600;
 
     public void saveAll(List<PostTerm> terms) {
         int batchCount = 0;

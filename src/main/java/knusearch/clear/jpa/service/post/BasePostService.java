@@ -58,21 +58,41 @@ public class BasePostService {
     //Transactional을 먹여줘서, CrawlController의 하나의 method에서 요구한 모든 작업이 끝난 뒤에 DB에 Commit된다!
     //CrawlController의 하나의 메소드에서는 postIctService.crawlUpdate(); 이런식으로 호출되었다.
     //이 메소드가 완전히 끝나야만 DB에 Commit된다. 그 전에 작업 중에는 repo.save가 실행돼도 실제로 DB에 반영되지 않는다는 것이다!
+    // 배치 크기 설정
+    private static final int BATCH_SIZE = 500;
 
     @Transactional
     public void saveAllTermPosts() {
         List<BasePost> basePosts = basePostRepository.findAll();
+
+        // PostTerm을 모아둘 리스트
+        List<PostTerm> postTermsBatch = new ArrayList<>();
+
         for (BasePost post : basePosts) {
-            saveTermPost(post);
+            List<PostTerm> postTerms = saveTermPost(post);
+
+            // PostTerm을 배치에 추가
+            postTermsBatch.addAll(postTerms);
+
+            // 배치 크기만큼 쌓였을 때 bulk insert 실행
+            if (postTermsBatch.size() >= BATCH_SIZE) {
+                postTermJdbcRepository.saveAll(postTermsBatch);
+                postTermsBatch.clear(); // 배치 완료 후 리스트 비움
+            }
+        }
+
+        // 남아있는 PostTerm이 있으면 마저 insert 실행
+        if (!postTermsBatch.isEmpty()) {
+            postTermJdbcRepository.saveAll(postTermsBatch);
         }
     }
 
     /**
      * 게시글을 저장하고, 해당 게시글의 단어를 추출하여 저장
      * @param post 게시글 객체
-     * @return 저장된 게시글
+     * @return 저장할 PostTerm 리스트
      */
-    private void saveTermPost(BasePost post) {
+    private List<PostTerm> saveTermPost(BasePost post) {
         // 게시글의 내용을 분석하여 단어를 추출
         Set<Term> terms = extractTermsFromContent(post.getTitle() + post.getText());
 
@@ -128,8 +148,10 @@ public class BasePostService {
 
             postTerms.add(postTerm);
         }
-        postTermJdbcRepository.saveAll(postTerms);
+
+        return postTerms; // 생성한 PostTerm 리스트 반환
     }
+
 
     // 특수문자에 대한 필터링 조건
     private static final String SPECIAL_CHARACTERS = "!@#$%^&*()_+{}[]|\\:;<>,.?/~";
