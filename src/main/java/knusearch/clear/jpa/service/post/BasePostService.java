@@ -1,22 +1,29 @@
 package knusearch.clear.jpa.service.post;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.Set;
 import knusearch.clear.jpa.domain.dto.BasePostClassifyResponse;
 import knusearch.clear.jpa.domain.post.BasePost;
+import knusearch.clear.jpa.domain.post.Term;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
+import knusearch.clear.jpa.repository.post.TermRepository;
 import knusearch.clear.jpa.service.CrawlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.openkoreantext.processor.OpenKoreanTextProcessorJava;
+import org.openkoreantext.processor.tokenizer.KoreanTokenizer.KoreanToken;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import scala.collection.Seq;
 
 import static knusearch.clear.jpa.domain.classification.SearchOption.*;
 
@@ -31,9 +38,86 @@ public class BasePostService {
     // 반대로  cralwSerivce -> postService는 절대 금지(순환참조). 순환참조는 하면 안 됨
     private final BasePostRepository basePostRepository;
 
+    private final TermRepository termRepository;
+
     //Transactional을 먹여줘서, CrawlController의 하나의 method에서 요구한 모든 작업이 끝난 뒤에 DB에 Commit된다!
     //CrawlController의 하나의 메소드에서는 postIctService.crawlUpdate(); 이런식으로 호출되었다.
     //이 메소드가 완전히 끝나야만 DB에 Commit된다. 그 전에 작업 중에는 repo.save가 실행돼도 실제로 DB에 반영되지 않는다는 것이다!
+
+    /**
+     * 게시글을 저장하고, 해당 게시글의 단어를 추출하여 저장
+     * @param post 게시글 객체
+     * @return 저장된 게시글
+     */
+    @Transactional
+    public BasePost saveTermPost(BasePost post) {
+        // 게시글의 내용을 분석하여 단어를 추출
+        Set<Term> terms = extractTermsFromContent(post.getTitle()+post.getText());
+
+        // 추출한 단어들을 Term 테이블에 저장
+        for (Term term : terms) {
+            // 중복된 단어가 있으면 기존 데이터를 가져오고, 없으면 새로 저장
+            Term existingTerm = termRepository.findByTerm(term.getTerm());
+            if (existingTerm != null) {
+                term = existingTerm;  // 이미 존재하는 Term을 재사용
+            } else {
+                termRepository.save(term);
+            }
+            // Post와 Term을 연관 지음
+            post.getTerms().add(term);
+        }
+
+        // 게시글 저장
+        return basePostRepository.save(post);
+    }
+
+    // 특수문자에 대한 필터링 조건
+    private static final String SPECIAL_CHARACTERS = "!@#$%^&*()_+{}[]|\\:;<>,.?/~";
+
+    /**
+     * 게시글의 내용에서 형태소 분석을 통해 단어를 추출
+     * @param content 게시글 내용
+     * @return 단어 집합
+     */
+    private Set<Term> extractTermsFromContent(String content) {
+        // 텍스트를 정규화
+        CharSequence normalized = OpenKoreanTextProcessorJava.normalize(content);
+
+        // 형태소 분석을 수행하여 토큰화
+        Seq<KoreanToken> tokens = OpenKoreanTextProcessorJava.tokenize(normalized);
+
+        // 단어 집합을 담을 Set 생성
+        Set<Term> terms = new HashSet<>();
+
+        // 각 토큰을 Term으로 변환하여 Set에 추가
+        OpenKoreanTextProcessorJava.tokensToJavaKoreanTokenList(tokens).forEach(token -> {
+            // 조건: 명사이면서, 길이가 1보다 크고, 특수문자가 포함되지 않은 경우
+            if ((token.getPos().toString().equals("Noun") || token.getPos().toString().equals("ProperNoun"))
+                && token.getText().length() > 1
+                && !containsSpecialCharacter(token.getText())) {
+
+                Term term = new Term();
+                term.setTerm(token.getText());  // 토큰의 텍스트를 Term에 저장
+                terms.add(term);
+            }
+        });
+
+        return terms;
+    }
+
+    /**
+     * 주어진 문자열에 특수문자가 포함되어 있는지 확인하는 메서드
+     * @param text 확인할 텍스트
+     * @return 특수문자가 포함되어 있으면 true, 아니면 false
+     */
+    private boolean containsSpecialCharacter(String text) {
+        for (char c : text.toCharArray()) {
+            if (SPECIAL_CHARACTERS.indexOf(c) >= 0) {
+                return true;  // 특수문자가 있으면 true 반환
+            }
+        }
+        return false;  // 특수문자가 없으면 false 반환
+    }
 
     @Transactional
     public void crawlUpdate() { // crawl and make baseposts

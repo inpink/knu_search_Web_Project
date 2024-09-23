@@ -5,18 +5,25 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
 import java.time.LocalDate;
 
+import java.util.HashSet;
+import java.util.Set;
 import knusearch.clear.constants.StringConstants;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Getter
 @Setter
+@ToString
 public class BasePost {
     /* 굳이 추상클래스로 두지말자(엔티티는 특정 비지니스 로직을 담고있기 때문에 조금만 달라져도 재사용이 어려움
       https://www.inflearn.com/questions/63567/%EC%95%88%EB%85%95%ED%95%98%EC%8B%AD%EB%8B%88%EA%B9%8C-%EB%8F%84%EB%A9%94%EC%9D%B8-%EC%84%A4%EA%B3%84%EC%8B%9C-%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4-%EC%B6%94%EC%83%81%ED%81%B4%EB%9E%98%EC%8A%A4-%EC%97%90-%EB%8C%80%ED%95%9C-%EC%9D%98%EA%B2%AC%EC%9D%84-%EB%93%A3%EA%B3%A0-%EC%8B%B6%EC%8A%B5%EB%8B%88%EB%8B%A4
@@ -73,6 +80,12 @@ public class BasePost {
     @Temporal(TemporalType.DATE)
     private LocalDate dateTime;
 
+    @ManyToMany
+    @JoinTable(
+        name = "post_terms",
+        joinColumns = @JoinColumn(name = "post_id"),
+        inverseJoinColumns = @JoinColumn(name = "term_id"))
+    private Set<Term> terms = new HashSet<>();
 
     //==생성 메서드==//
     public static BasePost createBasePost(String site, String url,
