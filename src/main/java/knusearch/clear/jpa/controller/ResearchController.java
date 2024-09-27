@@ -72,6 +72,14 @@ public class ResearchController {
                 model
         );
 
+        // 가중치 3인 버전
+
+        // bm25만
+
+        // bm25+ AI classi
+
+
+
         model.addAttribute("beforeKNU", beforeKNU);
         model.addAttribute("knuPlusAi", knuPlusAi);
         model.addAttribute("sortingAlgorithm", sortingAlgorithm);

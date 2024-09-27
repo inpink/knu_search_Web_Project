@@ -11,12 +11,12 @@ import org.springframework.stereotype.Repository;
 public interface TermRepository extends JpaRepository<Term, Long> {
 
     // 단어로 Term 조회
-    Term findByTerm(String term);
+    Term findByName(String name);
 
     // 특정 단어가 등장한 문서 수 계산
-    @Query("SELECT COUNT(DISTINCT pt.basePost) FROM PostTerm pt WHERE pt.term.term = :term")
+    @Query("SELECT COUNT(DISTINCT pt.basePost) FROM PostTerm pt WHERE pt.term.name = :term")
     long countDocumentsWithTerm(@Param("term") String term);
 
-    List<Term> findByTermIn(List<String> termTexts);
+    List<Term> findByNameIn(List<String> termTexts);
 
 }

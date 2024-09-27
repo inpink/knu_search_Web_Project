@@ -23,7 +23,7 @@ public class TermJdbcRepository {
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(
                     "INSERT INTO TERM (`TERM`) VALUES (?)", Statement.RETURN_GENERATED_KEYS);
-                ps.setString(1, term.getTerm());
+                ps.setString(1, term.getName());
                 return ps;
             }, keyHolder);
 

@@ -24,4 +24,8 @@ public class PostTerm {
     @ManyToOne
     @JoinColumn(name = "term_id")
     private Term term;
+
+    public Long getPostId() {
+        return basePost.getId();
+    }
 }

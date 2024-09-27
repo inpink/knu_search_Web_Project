@@ -59,6 +59,9 @@ public class BasePost {
     @Temporal(TemporalType.DATE)
     private LocalDate dateTime;
 
+    public String getContent() {
+        return this.text + this.imageText;
+    }
     //==생성 메서드==//
     public static BasePost createBasePost(String site, String url,
                                           boolean scrtWrtiYn, String encMenuSeq, String encMenuBoardSeq,

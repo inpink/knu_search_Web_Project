@@ -97,7 +97,7 @@ public class BasePostService {
         Set<Term> terms = extractTermsFromContent(post.getTitle() + post.getText());
 
         List<String> termTexts = terms.stream()
-            .map(Term::getTerm)
+            .map(Term::getName)
             .collect(Collectors.toList());
 
         // 캐시에서 먼저 단어 확인
@@ -115,9 +115,9 @@ public class BasePostService {
 
         // 캐시에 없는 단어들을 한 번에 DB에서 조회
         if (!missingTerms.isEmpty()) {
-            List<Term> foundTerms = termRepository.findByTermIn(missingTerms);
+            List<Term> foundTerms = termRepository.findByNameIn(missingTerms);
             Map<String, Term> foundTermsMap = foundTerms.stream()
-                .collect(Collectors.toMap(Term::getTerm, term -> term));
+                .collect(Collectors.toMap(Term::getName, term -> term));
 
             // DB에서 찾은 단어는 캐시에 추가
             foundTermsMap.forEach((key, value) -> {
@@ -130,7 +130,7 @@ public class BasePostService {
             List<Term> newTerms = new ArrayList<>();
             for (String termText : missingTerms) {
                 Term newTerm = new Term();
-                newTerm.setTerm(termText);
+                newTerm.setName(termText);
                 newTerms.add(newTerm);
                 cachedTerms.put(termText, newTerm);
                 termCache.put(termText, newTerm);  // 캐시에 저장
@@ -161,7 +161,7 @@ public class BasePostService {
      * @param content 게시글 내용
      * @return 단어 집합
      */
-    private Set<Term> extractTermsFromContent(String content) {
+    public Set<Term> extractTermsFromContent(String content) {
         // 텍스트를 정규화
         CharSequence normalized = OpenKoreanTextProcessorJava.normalize(content);
 
@@ -179,7 +179,7 @@ public class BasePostService {
                 && !containsSpecialCharacter(token.getText())) {
 
                 Term term = new Term();
-                term.setTerm(token.getText());  // 토큰의 텍스트를 Term에 저장
+                term.setName(token.getText());  // 토큰의 텍스트를 Term에 저장
                 terms.add(term);
             }
         });
@@ -192,7 +192,7 @@ public class BasePostService {
      * @param text 확인할 텍스트
      * @return 특수문자가 포함되어 있으면 true, 아니면 false
      */
-    private boolean containsSpecialCharacter(String text) {
+    public boolean containsSpecialCharacter(String text) {
         for (char c : text.toCharArray()) {
             if (SPECIAL_CHARACTERS.indexOf(c) >= 0) {
                 return true;  // 특수문자가 있으면 true 반환
