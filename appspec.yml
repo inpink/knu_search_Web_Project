@@ -6,7 +6,7 @@ os: linux
 files:
   - source:  /
     destination: /home/ubuntu/app
-    overwrite: yes
+    overwrite: true
 
 permissions:
   - object: /
