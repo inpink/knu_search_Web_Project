@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "search")
 @Getter
 @Setter
 public class Search { //bindingResult로 받은 SearchForm객체에서 정제해서 이 테이블에 저장

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
+@Table(name = "search_site")
 @Getter
 @Setter
 public class SearchSite { //검색 옵션에서 사이트는 여러개 선택할 수 있다.
