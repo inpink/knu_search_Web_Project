@@ -53,6 +53,7 @@ public class ResearchController {
         List<String> words = (List<String>) predictedAndTokens.get("words");
         String refinedPredictedClass = StringUtil.deleteLineSeparator(predictedClass);
 
+        model.addAttribute("query", query);
         model.addAttribute("predictedClass", predictedClass);
 
         List<BasePostRequest> knuPlusAi = searchService.knuPlusAi(
