@@ -32,7 +32,7 @@
     <div class="row section-container">
         <div class="col-md-3">
             <input type="checkbox" id="section1Checkbox" checked>
-            <label for="section1Checkbox">1) KNU 기존 홈페이지</label>
+            <label for="section1Checkbox">1) KNU</label>
             <div th:each="post, iterStat : ${beforeKNU}" class="list-group-item">
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
@@ -43,7 +43,7 @@
         </div>
         <div class="col-md-3">
             <input type="checkbox" id="section2Checkbox" checked>
-            <label for="section2Checkbox">2) KNU 기존 홈페이지 + ResNet_Transformer</label>
+            <label for="section2Checkbox">2) KNU + ResNetTrans</label>
             <div th:each="post, iterStat : ${knuPlusAi}" class="list-group-item">
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
@@ -52,10 +52,43 @@
                 <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>
             </div>
         </div>
+<!--        <div class="col-md-2">-->
+<!--            <input type="checkbox" id="section3Checkbox" checked>-->
+<!--            <label for="section3Checkbox">3) Sorting Algorithm</label>-->
+<!--            <div th:each="post, iterStat : ${sortingAlgorithm}" class="list-group-item">-->
+<!--                <div class="d-flex w-100 justify-content-between">-->
+<!--                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>-->
+<!--                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>-->
+<!--                </div>-->
+<!--                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--        <div class="col-md-2">-->
+<!--            <input type="checkbox" id="section4Checkbox" checked>-->
+<!--            <label for="section4Checkbox">4) Sorting Algorithm + ResNet_Transformer</label>-->
+<!--            <div th:each="post, iterStat : ${resnetTransformer}" class="list-group-item">-->
+<!--                <div class="d-flex w-100 justify-content-between">-->
+<!--                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>-->
+<!--                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>-->
+<!--                </div>-->
+<!--                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--        <div class="col-md-2">-->
+<!--            <input type="checkbox" id="section5Checkbox" checked>-->
+<!--            <label for="section4Checkbox">5) Sorting Algorithm + ResNet_Transformer (Weight 3)</label>-->
+<!--            <div th:each="post, iterStat : ${resnetTransformerWeight3}" class="list-group-item">-->
+<!--                <div class="d-flex w-100 justify-content-between">-->
+<!--                    <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>-->
+<!--                    <small>Date: <span th:text="${post.dateTime}">Date</span></small>-->
+<!--                </div>-->
+<!--                <p class="mb-1" th:text="${#strings.length(post.text) > 200 ? #strings.substring(post.text, 0, 200) + '...' : post.text}">Post Text</p>-->
+<!--            </div>-->
+<!--        </div>-->
         <div class="col-md-3">
-            <input type="checkbox" id="section3Checkbox" checked>
-            <label for="section3Checkbox">3) Sorting Algorithm</label>
-            <div th:each="post, iterStat : ${sortingAlgorithm}" class="list-group-item">
+            <input type="checkbox" id="section6Checkbox" checked>
+            <label for="section6Checkbox">3) BM25</label>
+            <div th:each="post, iterStat : ${bm25}" class="list-group-item">
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
                     <small>Date: <span th:text="${post.dateTime}">Date</span></small>
@@ -64,9 +97,9 @@
             </div>
         </div>
         <div class="col-md-3">
-            <input type="checkbox" id="section4Checkbox" checked>
-            <label for="section4Checkbox">4) Sorting Algorithm + ResNet_Transformer</label>
-            <div th:each="post, iterStat : ${resnetTransformer}" class="list-group-item">
+            <input type="checkbox" id="section7Checkbox" checked>
+            <label for="section7Checkbox">4) BM25 + ResNetTrans</label>
+            <div th:each="post, iterStat : ${bm25PlusAi}" class="list-group-item">
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1"><span th:text="${iterStat.count}">1</span>. <a th:text="${post.title}"  th:href="@{${post.url}}" target="_blank">Post Title</a></h5>
                     <small>Date: <span th:text="${post.dateTime}">Date</span></small>

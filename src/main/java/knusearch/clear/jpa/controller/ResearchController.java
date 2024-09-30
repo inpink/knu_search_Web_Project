@@ -69,21 +69,40 @@ public class ResearchController {
                 query,
                 refinedPredictedClass,
                 5,
-                model
+                model,
+            2
         );
 
         // 가중치 3인 버전
+        List<BasePostRequest> sortingResnetTransformerWeight3 = searchService.searchResultsWithSortingAlgorithm(
+            words,
+            query,
+            refinedPredictedClass,
+            5,
+            model,
+            3
+        );
 
         // bm25만
+        List<BasePostRequest> bm25 = searchService.searchResultsWithBM25(
+            query
+        );
+
 
         // bm25+ AI classi
-
+        List<BasePostRequest> bm25PlusAi = searchService.searchResultsWithBM25PlusAi(
+            query,
+            refinedPredictedClass
+        );
 
 
         model.addAttribute("beforeKNU", beforeKNU);
         model.addAttribute("knuPlusAi", knuPlusAi);
         model.addAttribute("sortingAlgorithm", sortingAlgorithm);
         model.addAttribute("resnetTransformer", sortingResnetTransformer);
+        model.addAttribute("resnetTransformerWeight3", sortingResnetTransformerWeight3);
+        model.addAttribute("bm25", bm25);
+        model.addAttribute("bm25PlusAi", bm25PlusAi);
 
         return "research/researchPage";
     }

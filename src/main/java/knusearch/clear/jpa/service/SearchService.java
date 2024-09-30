@@ -11,15 +11,22 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import knusearch.clear.jpa.domain.dto.BasePostRequest;
+import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
+import knusearch.clear.jpa.service.post.BM25Service;
+import knusearch.clear.jpa.service.post.BasePostService;
 import lombok.RequiredArgsConstructor;
+import org.openkoreantext.processor.OpenKoreanTextProcessorJava;
+import org.openkoreantext.processor.tokenizer.KoreanTokenizer.KoreanToken;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
+import scala.collection.Seq;
 
 @Primary
 @Service
@@ -29,6 +36,8 @@ public class SearchService {
 
     private final BasePostRepository basePostRepository;
     private final ClassificationService classificationService;
+    private final BasePostService basePostService;
+    private final BM25Service bm25Service;
 
     public String findOrder() {
         return "InOrderChecked";
@@ -115,7 +124,8 @@ public class SearchService {
         String query,
         String refinedPredictedClass,
         int size,
-        Model model
+        Model model,
+        int aiWeight
     ) {
         if (query.isBlank()) { // 쿼리 없는 경우 연산 안하고 빈 페이지 반환
             return new ArrayList<>();
@@ -132,7 +142,7 @@ public class SearchService {
         System.out.println("words = " + words);
 
         List<Map.Entry<BasePostRequest, Integer>> searchResultWithCount = searchAndPostWithBoostClassification(
-            words, refinedPredictedClass); //검색어의 분류정보
+            words, refinedPredictedClass, aiWeight); //검색어의 분류정보
         model.addAttribute("searchResultWithCount", searchResultWithCount);
 
         // searchResultWithCount 리스트를 순회하면서 각 항목의 title과 weight만 로그로 출력
@@ -174,7 +184,7 @@ public class SearchService {
 
     public List<Map.Entry<BasePostRequest, Integer>> searchAndPostWithBoostClassification(
         List<String> words,
-        String classification) {
+        String classification, int aiWeight) {
         Map<BasePostRequest, Integer> postWithCount = calculateCount(words);
         // 예: 첫 5개의 항목만 출력
         postWithCount.entrySet().stream()
@@ -188,7 +198,7 @@ public class SearchService {
         Map<BasePostRequest, Integer> postWithCountAndClass = countClassificationWeight(
             postWithCount,
             classification,
-            2);
+            aiWeight);
         // 예: 첫 5개의 항목만 출력
         postWithCount.entrySet().stream()
             .limit(5) // 5개의 항목만 선택
@@ -207,7 +217,8 @@ public class SearchService {
         String refinedPredictedClass,
         int page,
         int size,
-        Model model
+        Model model,
+        int aiWeight
     ) {
         if (query.isBlank()) { // 쿼리 없는 경우 연산 안하고 빈 페이지 반환
             return listToPage(new ArrayList<>(), page, size);
@@ -229,7 +240,7 @@ public class SearchService {
             searchResultWithCount = searchAndPostWithoutBoostClassification(words);
         } else {
             searchResultWithCount = searchAndPostWithBoostClassification(
-                words, refinedPredictedClass); //검색어의 분류정보
+                words, refinedPredictedClass, aiWeight); //검색어의 분류정보
         }
         // count개수 담은 basepost map 보내기
         model.addAttribute("searchResultWithCount", searchResultWithCount);
@@ -482,5 +493,105 @@ public class SearchService {
             }
         }
         return allPosts;
+    }
+
+    public List<BasePostRequest> searchResultsWithBM25(String query) {
+        CharSequence normalized = OpenKoreanTextProcessorJava.normalize(query);
+        Seq<KoreanToken> tokens = OpenKoreanTextProcessorJava.tokenize(normalized);
+
+        List<String> words = OpenKoreanTextProcessorJava.tokensToJavaKoreanTokenList(tokens)
+            .stream()
+            .filter(token -> (token.getPos().toString().equals("Noun") || token.getPos().toString()
+                .equals("ProperNoun"))
+                && token.getText().length() > 1
+                && !basePostService.containsSpecialCharacter(token.getText()))
+            .map(token -> token.getText())  // 필요한 텍스트만 추출
+            .toList();
+
+        System.out.println("words: " + words);
+
+        List<BasePost> posts = bm25Service.getDocuments();
+
+        Map<BasePost, Double> postToScoreMap = new HashMap<>();
+        for (BasePost post : posts) {
+            double bm25 = bm25Service.calculateBM25(post, words);
+            if (bm25 > 0) {
+                postToScoreMap.put(post, bm25);
+            }
+        }
+
+        // BM25 점수에 따라 내림차순으로 정렬
+        List<Map.Entry<BasePost, Double>> sortedEntries = postToScoreMap.entrySet()
+            .stream()
+            .sorted(Map.Entry.<BasePost, Double>comparingByValue().reversed())
+            .collect(Collectors.toList());
+
+        // 정렬된 BasePost를 BasePostRequest로 변환
+        List<BasePostRequest> result = new ArrayList<>();
+        for (Map.Entry<BasePost, Double> entry : sortedEntries) {
+            BasePost post = entry.getKey();
+            BasePostRequest request = new BasePostRequest(
+                post.getId(),
+                post.getUrl(),
+                post.getTitle(),
+                post.getText(),
+                post.getImage(),
+                post.getDateTime(),
+                post.getClassification()
+            );
+            result.add(request);
+        }
+
+        return result;
+    }
+
+    public List<BasePostRequest> searchResultsWithBM25PlusAi(String query, String refinedPredictedClass) {
+        CharSequence normalized = OpenKoreanTextProcessorJava.normalize(query);
+        Seq<KoreanToken> tokens = OpenKoreanTextProcessorJava.tokenize(normalized);
+
+        List<String> words = OpenKoreanTextProcessorJava.tokensToJavaKoreanTokenList(tokens)
+            .stream()
+            .filter(token -> (token.getPos().toString().equals("Noun") || token.getPos().toString()
+                .equals("ProperNoun"))
+                && token.getText().length() > 1
+                && !basePostService.containsSpecialCharacter(token.getText()))
+            .map(token -> token.getText())  // 필요한 텍스트만 추출
+            .toList();
+
+        System.out.println("words: " + words);
+
+        List<BasePost> posts = bm25Service.getDocuments();
+
+        Map<BasePost, Double> postToScoreMap = new HashMap<>();
+        for (BasePost post : posts) {
+            double bm25 = bm25Service.calculateBM25WithAi(post, words, refinedPredictedClass);
+            if (bm25 > 0) {
+                postToScoreMap.put(post, bm25);
+            }
+        }
+
+        // BM25 점수에 따라 내림차순으로 정렬
+        List<Map.Entry<BasePost, Double>> sortedEntries = postToScoreMap.entrySet()
+            .stream()
+            .sorted(Map.Entry.<BasePost, Double>comparingByValue().reversed())
+            .collect(Collectors.toList());
+
+        // 정렬된 BasePost를 BasePostRequest로 변환
+        List<BasePostRequest> result = new ArrayList<>();
+        for (Map.Entry<BasePost, Double> entry : sortedEntries) {
+            BasePost post = entry.getKey();
+            BasePostRequest request = new BasePostRequest(
+                post.getId(),
+                post.getUrl(),
+                post.getTitle(),
+                post.getText(),
+                post.getImage(),
+                post.getDateTime(),
+                post.getClassification()
+            );
+            result.add(request);
+        }
+
+        return result;
     }
 }

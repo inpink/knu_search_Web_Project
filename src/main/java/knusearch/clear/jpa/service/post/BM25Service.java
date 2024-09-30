@@ -1,18 +1,20 @@
 package knusearch.clear.jpa.service.post;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.domain.post.PostTerm;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
 import knusearch.clear.jpa.repository.post.PostTermRepository;
+import lombok.Getter;
 import org.springframework.stereotype.Service;
 
 @Service
+@Getter
 public class BM25Service {
 
     private double k1 = 1.5;  // BM25 조정 파라미터
@@ -24,6 +26,8 @@ public class BM25Service {
 
     private Map<String, Integer> docFreqs;  // 단어의 문서 빈도 (IDF 계산용)
     private Map<Long, Map<String, Integer>> docWords = new ConcurrentHashMap<>(); // 문서 별 단어와 단어 빈도
+
+    private List<BasePost> documents;
 
     private BasePostRepository basePostRepository;
     private final PostTermRepository postTermRepository;
@@ -44,6 +48,7 @@ public class BM25Service {
         this.avgDocLength = calculateAvgDocLength(documents);  // 평균 문서 길이 캐싱
         this.docFreqs = calculateDocFreqs(documents);  // 단어별 문서 빈도 계산
         this.postTermRepository = postTermRepository;
+        this.documents = basePostRepository.findAll();
 
 //        System.out.println("totalDocs: " + totalDocs);
 //        System.out.println("avgDocLength: " + avgDocLength);
@@ -77,10 +82,17 @@ public class BM25Service {
         return frequencies;
     }
 
+    // 문서의 최신성을 기반으로 가중치 계산 (시간 감쇄 적용)
+    private double calculateTimeWeight(BasePost doc) {
+        long daysAgo = ChronoUnit.DAYS.between(doc.getDateTime(), LocalDateTime.now());
+        return Math.exp(-daysAgo / 1000.0); // 나누는 숫자가 커질수록 시간 가중치가 전반적으로 작아짐
+    }
+
     // BM25 점수 계산
     public double calculateBM25(BasePost doc, List<String> query) {
         double score = 0.0;
         double docLength = getCachedDocLength(doc);  // 문서 길이 캐싱 사용
+        double timeWeight = calculateTimeWeight(doc);   // 시간 가중치 계산
 
         for (String word : query) {
             int termFreq = termFrequency(word, doc);  // 단어 빈도 계산
@@ -88,6 +100,31 @@ public class BM25Service {
 
             double idf = getCachedIDF(word);  // IDF 캐싱 사용
             score += idf * ((termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength / avgDocLength))));
+        }
+        // 시간 가중치를 BM25 점수에 곱해서 반영
+        return score * timeWeight;
+    }
+
+    // BM25 점수 계산 (AI 적용)
+    public double calculateBM25WithAi(BasePost doc, List<String> query,
+        String refinedPredictedClass) {
+        double score = 0.0;
+        double docLength = getCachedDocLength(doc);  // 문서 길이 캐싱 사용
+        double timeWeight = calculateTimeWeight(doc);   // 시간 가중치 계산
+
+        for (String word : query) {
+            int termFreq = termFrequency(word, doc);  // 단어 빈도 계산
+            if (termFreq == 0) continue;  // 문서에 단어가 없으면 건너뜀
+
+            double idf = getCachedIDF(word);  // IDF 캐싱 사용
+            score += idf * ((termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength / avgDocLength))));
+        }
+        // 시간 가중치를 BM25 점수에 곱해서 반영
+
+        score = score * timeWeight;
+
+        if (doc.getClassification().equals(refinedPredictedClass)) {
+            score *= 2.0;  // AI 예측이 맞으면 가중치 증가
         }
         return score;
     }
@@ -116,4 +153,5 @@ public class BM25Service {
 //        System.out.println("idf: " + idf);
         return idf;
     }
+
 }

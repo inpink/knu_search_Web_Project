@@ -105,7 +105,7 @@ public class SearchController {
                 words,
                 searchForm.getSearchQuery(),
                 refinedPredictedClass,
-                page, size, model);
+                page, size, model,2);
         model.addAttribute("searchResult", searchResult);
 
         if (result.hasErrors()) {
