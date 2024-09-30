@@ -540,6 +540,10 @@ public class SearchService {
                 post.getClassification()
             );
             result.add(request);
+
+            if (result.size()>=5) {
+                break;
+            }
         }
 
         return result;
@@ -590,6 +594,10 @@ public class SearchService {
                 post.getClassification()
             );
             result.add(request);
+
+            if (result.size()>=5) {
+                break;
+            }
         }
 
         return result;

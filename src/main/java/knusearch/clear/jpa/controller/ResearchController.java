@@ -60,31 +60,6 @@ public class ResearchController {
             refinedPredictedClass,
             5);
 
-        List<BasePostRequest> sortingAlgorithm = searchService.searchResults(
-                words,
-                query,
-                5,
-                model);
-
-        List<BasePostRequest>  sortingResnetTransformer = searchService.searchResultsWithSortingAlgorithm(
-                words,
-                query,
-                refinedPredictedClass,
-                5,
-                model,
-            2
-        );
-
-        // 가중치 3인 버전
-        List<BasePostRequest> sortingResnetTransformerWeight3 = searchService.searchResultsWithSortingAlgorithm(
-            words,
-            query,
-            refinedPredictedClass,
-            5,
-            model,
-            3
-        );
-
         // bm25만
         List<BasePostRequest> bm25 = searchService.searchResultsWithBM25(
             query
@@ -100,9 +75,6 @@ public class ResearchController {
 
         model.addAttribute("beforeKNU", beforeKNU);
         model.addAttribute("knuPlusAi", knuPlusAi);
-        model.addAttribute("sortingAlgorithm", sortingAlgorithm);
-        model.addAttribute("resnetTransformer", sortingResnetTransformer);
-        model.addAttribute("resnetTransformerWeight3", sortingResnetTransformerWeight3);
         model.addAttribute("bm25", bm25);
         model.addAttribute("bm25PlusAi", bm25PlusAi);
 
