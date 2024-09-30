@@ -40,7 +40,9 @@ public class ResearchController {
 
     @GetMapping("/research/result")
     public String researchResult(@RequestParam("query") String query, Model model) {
-        if (!query.matches("[가-힣\\s]+")) {
+
+        query = query.replaceAll("[^가-힣\\s]", "");  // 한글과 공백을 제외한 모든 문자를 제거
+        if (query.isEmpty()) {
             return "research/researchErrorPage";
         }
 
