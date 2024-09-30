@@ -7,10 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update #update:프로젝트 재시작할떄마다 DB 초기화(create)되는것이 아닌 업데이트(코드의 변경사항를 DB에 업데이트) => validate(현재 코드가 DB 스키마와 일치하는지 검증해서 일치하면 시작)
-      naming:
-        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
-        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+      ddl-auto: validate #update:프로젝트 재시작할떄마다 DB 초기화(create)되는것이 아닌 업데이트(코드의 변경사항를 DB에 업데이트) => validate(현재 코드가 DB 스키마와 일치하는지 검증해서 일치하면 시작)
 
     properties:
       hibernate:
