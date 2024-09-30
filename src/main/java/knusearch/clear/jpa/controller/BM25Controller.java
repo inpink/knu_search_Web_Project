@@ -3,6 +3,7 @@ package knusearch.clear.jpa.controller;
 import java.util.List;
 import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
+import knusearch.clear.jpa.repository.post.TermRepository;
 import knusearch.clear.jpa.service.post.BM25Service;
 import knusearch.clear.jpa.service.post.BasePostService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,13 @@ public class BM25Controller {
 
     private final BM25Service bm25Service;
     private final BasePostRepository basePostRepository;
+    private final TermRepository termRepository;
+
+    @GetMapping("/testest")
+    public ResponseEntity<String> test() {
+        termRepository.findByNameIn(List.of("test"));
+        return ResponseEntity.ok("test");
+    }
 
     @GetMapping("/makeInversedIndex")
     public ResponseEntity<String> createPost() {
