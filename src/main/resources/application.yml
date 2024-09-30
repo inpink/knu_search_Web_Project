@@ -18,9 +18,10 @@ spring:
 
         order_updates: true
         order_inserts: true
-        naming:
-          physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+
     database-platform: org.hibernate.dialect.MySQLDialect #hibernate.dialect vs database-platform
+
+#    show-sql: true
 
   messages:
     basename: errors #국제화 파일들
