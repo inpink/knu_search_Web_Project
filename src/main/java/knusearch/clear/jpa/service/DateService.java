@@ -3,7 +3,6 @@ package knusearch.clear.jpa.service;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-import knusearch.clear.jpa.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class DateService {
-
-    private final MemberRepository memberRepository; //나중에 필요한 repository로 변경할 것
 
     @Transactional
     public LocalDate currentDate() {
