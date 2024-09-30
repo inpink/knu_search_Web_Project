@@ -34,7 +34,7 @@ public class PostTermJdbcRepository {
     }
 
     private int batchInsert(int batchSize, int batchCount, List<PostTerm> subTerms) {
-        jdbcTemplate.batchUpdate("INSERT INTO POST_TERM (post_id, term_id) VALUES (?, ?)",
+        jdbcTemplate.batchUpdate("INSERT INTO post_term (post_id, term_id) VALUES (?, ?)",
             new BatchPreparedStatementSetter() {
                 @Override
                 public void setValues(PreparedStatement ps, int i) throws SQLException {
