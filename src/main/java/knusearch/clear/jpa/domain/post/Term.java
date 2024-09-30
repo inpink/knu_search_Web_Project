@@ -11,7 +11,7 @@ import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity
+@Entity(name = "term")
 @Table(indexes = {
     @Index(name = "idx_term", columnList = "name")
 }, name = "term")
