@@ -2,7 +2,9 @@ package knusearch.clear.jpa.domain.site;
 
 import java.util.Arrays;
 import java.util.List;
+import lombok.Getter;
 
+@Getter
 public enum Site {
     MAIN("메인", "https://web.kangnam.ac.kr/menu/", MainBoard.values()),
     ICT("ICT", "https://sae.kangnam.ac.kr/menu/", IctBoard.values()),

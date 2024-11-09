@@ -15,6 +15,8 @@ import knusearch.clear.jpa.domain.dto.BasePostClassifyResponse;
 import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.domain.post.PostTerm;
 import knusearch.clear.jpa.domain.post.Term;
+import knusearch.clear.jpa.domain.site.Board;
+import knusearch.clear.jpa.domain.site.Site;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
 import knusearch.clear.jpa.repository.post.PostTermJdbcRepository;
 import knusearch.clear.jpa.repository.post.PostTermRepository;
@@ -204,9 +206,10 @@ public class BasePostService {
     @Transactional
     public void crawlUpdate() { // crawl and make baseposts
         String baseUrl = getBaseUrl();
-        String[] allPostUrl = getAllPostUrl();
+        List<Board> boards = getBoards();
 
-        for (String postUrl : allPostUrl) {
+        for (Board board : boards) {
+            String postUrl = board.getEncryptedName();
             String firsNoticetUrl = scrapingService.makeFinalPostListUrl(baseUrl, postUrl, 1);
             int totalPageIdx = scrapingService.totalPageIdx(firsNoticetUrl); //총 페이지수 구해옴
 
@@ -216,11 +219,10 @@ public class BasePostService {
                 //굳이 안받아와도 되긴할듯 필요하면 받아오고 //상속관계를 이용하여 BaseContent로 통일!
                 //추상화를 통해 DIP(의존관계역전) 적용된 케이스임
                 //List<BasePost> contentList = scrapeWebPage(baseUrl, postUrl ,i); //10페이지에 있는 것 contentMain에 저장시킴?
-                Elements links = scrapingService.GetAllLinksFromOnePage(baseUrl, postUrl, i);
+                Elements links = scrapingService.getAllLinksFromOnePage(baseUrl, postUrl, i);
 
                 for (Element linkElement : links) {
-                    BasePost basePost = new BasePost();
-                    scrapingService.setURLValues(basePost, linkElement, baseUrl, postUrl);
+                    BasePost basePost = scrapingService.setURLValues(linkElement, baseUrl, postUrl);
 
                     checkAndSave(basePost);
                 }
@@ -361,13 +363,10 @@ public class BasePostService {
     }
 
     public String getBaseUrl() {
-        return "https://web.kangnam.ac.kr/menu/";
-        //return Site.findBaseUrl(basePost.get);
-    } // TODO:
+        return Site.MAIN.getBaseUrl();
+    }
 
-    public String[] getAllPostUrl() {
-        return new String[]{"f19069e6134f8f8aa7f689a4a675e66f.do",
-            "e4058249224f49ab163131ce104214fb.do"};
-        //공지사항,  행사/안내 등
+    public List<Board> getBoards() {
+        return Site.MAIN.getBoards();
     }
 }

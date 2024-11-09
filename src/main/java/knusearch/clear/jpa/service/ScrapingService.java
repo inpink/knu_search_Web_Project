@@ -5,11 +5,14 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import knusearch.clear.constants.StringConstants;
 import knusearch.clear.jpa.domain.post.BasePost;
+import knusearch.clear.jpa.domain.site.Board;
+import knusearch.clear.jpa.domain.site.Site;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
 import knusearch.clear.util.ImageDownloader;
 import knusearch.clear.util.OCRProcessor;
@@ -37,6 +40,7 @@ public class ScrapingService {
         add("3"); //취창업 : 주로 교외. 취업, 창업 관련
     }};
     private final BasePostRepository basePostRepository;
+    private final ClassificationService classificationService;
 
     @Transactional
     public String makeFinalPostListUrl(String baseUrl, String postUrl, int pageIdx) {
@@ -45,10 +49,10 @@ public class ScrapingService {
 
     @Transactional
     public String makeFinalPostUrl(String baseUrl, String postUrl,
-                                   boolean scrtWrtiYn, String encMenuSeq, String encMenuBoardSeq) {
+        boolean scrtWrtiYn, String encMenuSeq, String encMenuBoardSeq) {
         return baseUrl + "board/info/" + postUrl
-                + "?scrtWrtiYn=" + scrtWrtiYn + "&encMenuSeq="
-                + encMenuSeq + "&encMenuBoardSeq=" + encMenuBoardSeq;
+            + "?scrtWrtiYn=" + scrtWrtiYn + "&encMenuSeq="
+            + encMenuSeq + "&encMenuBoardSeq=" + encMenuBoardSeq;
     }
 
     //@Transactional : 트랜잭션 생성.
@@ -82,13 +86,14 @@ public class ScrapingService {
     }
 
     @Transactional
-    public Elements GetAllLinksFromOnePage(String baseUrl, String postUrl, int pageIdx) {  //하나의 페이지에서 모든 게시물들 링크뽑아냄
+    public Elements getAllLinksFromOnePage(String baseUrl, String postUrl,
+        int pageIdx) {  //하나의 페이지에서 모든 게시물들 링크뽑아냄
         //전체를 담을 List (현재 사용 X)
         //List<BasePost> postList = new ArrayList<>();
 
         try {
             Document document = Jsoup.connect(
-                    makeFinalPostListUrl(baseUrl, postUrl, pageIdx)).get();
+                makeFinalPostListUrl(baseUrl, postUrl, pageIdx)).get();
 
             // 게시물 목록에서 각 게시물의 URL을 추출
             Element div1 = document.select(".sec_inner").first();
@@ -106,7 +111,8 @@ public class ScrapingService {
     }
 
     @Transactional
-    public void setURLValues(BasePost basePost, Element linkElement, String baseUrl, String postUrl) {
+    public BasePost setURLValues(Element linkElement, String baseUrl, String postUrl) {
+        BasePost basePost = new BasePost();
         String dataParams = linkElement.attr("data-params");
         /*System.out.println("dataParams"+dataParams);*/
 
@@ -120,14 +126,15 @@ public class ScrapingService {
         String encMenuBoardSeq = jsonObject.getString("encMenuBoardSeq");
 
         // 최종 URL을 생성
-        String finalURL = makeFinalPostUrl(baseUrl, postUrl, scrtWrtiYn, encMenuSeq, encMenuBoardSeq);
+        String finalURL = makeFinalPostUrl(baseUrl, postUrl, scrtWrtiYn, encMenuSeq,
+            encMenuBoardSeq);
 
         basePost.setUrl(finalURL);
         basePost.setScrtWrtiYn(scrtWrtiYn);
         basePost.setEncryptedMenuSequence(encMenuSeq);
         basePost.setEncryptedMenuBoardSequence(encMenuBoardSeq);
-        //System.out.println("finalURL = " + finalURL);
 
+        return basePost;
     }
 
     @Transactional
@@ -233,4 +240,48 @@ public class ScrapingService {
         return text;
     }
 
+    public void scrapeYesterdayPosts(Site site) {
+        String baseUrl = site.getBaseUrl();
+        List<Board> boards = site.getBoards();
+
+        final LocalDate yesterday = LocalDate.now().minusDays(1);
+
+        for (Board board : boards) {
+            String postUrl = board.getEncryptedName();
+            savePostsWithinPeriod(baseUrl, postUrl, yesterday);
+        }
+    }
+
+    @Transactional
+    public void savePostsWithinPeriod(String baseUrl, String postUrl, LocalDate yesterday) {
+        int pageIdx = 1;
+        boolean isTimeToBreak = false;
+        while (isTimeToBreak) {
+            Elements links = getAllLinksFromOnePage(baseUrl, postUrl, pageIdx);
+            isTimeToBreak = checkWithinPeriodAndSave(baseUrl, postUrl, yesterday, links);
+            pageIdx++;
+        }
+    }
+
+    public boolean checkWithinPeriodAndSave(
+        String baseUrl,
+        String postUrl,
+        LocalDate yesterday,
+        Elements links
+    ) {
+        for (Element linkElement : links) {
+            BasePost basePost = setURLValues(linkElement, baseUrl, postUrl);
+
+            Map<String, Object> predictResult = classificationService.predictClassification(basePost.getText() + basePost.getTitle());
+            basePost.setClassification((String) predictResult.get("predictedClass"));
+
+            LocalDate dateTime = basePost.getDateTime();
+            if (dateTime.isBefore(yesterday)) {
+                return true;
+            }
+
+            basePostRepository.save(basePost);
+        }
+        return false;
+    }
 }
