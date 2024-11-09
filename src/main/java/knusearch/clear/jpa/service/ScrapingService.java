@@ -24,7 +24,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 
@@ -39,9 +38,8 @@ public class ScrapingService {
         add("2"); //학습/상담 : 학습/상담 : 주로 교내. 학습 지원, 상담 지원
         add("3"); //취창업 : 주로 교외. 취업, 창업 관련
     }};
-    private final BasePostRepository basePostRepository;
     private final ClassificationService classificationService;
-    private final BasePostJdbcRepository basePostJdbcRepository;
+    private final BasePostRepository basePostRepository;
 
     @Transactional
     public String makeFinalPostListUrl(String baseUrl, String postUrl, int pageIdx) {
@@ -200,33 +198,7 @@ public class ScrapingService {
         return text;
     }
 
-    public void scrapeYesterdayPosts(Site site) {
-        log.info("Scraping posts from " );
-        String baseUrl = site.getBaseUrl();
-        List<Board> boards = site.getBoards();
-
-        for (Board board : boards) {
-            String postUrl = board.getEncryptedName();
-            savePostsWithinPeriod(baseUrl, postUrl);
-        }
-    }
-
-    @Transactional
-    public void savePostsWithinPeriod(String baseUrl, String postUrl) {
-        int pageIdx = 1;
-        boolean isTimeToBreak = false;
-
-        while (!isTimeToBreak) {
-            Elements links = getAllLinksFromOnePage(baseUrl, postUrl, pageIdx);
-            CheckPostResult checkPostResult = checkWithinPeriod(baseUrl, postUrl, links);
-            isTimeToBreak = checkPostResult.isShouldBreak();
-            List<BasePost> linkedPosts = checkPostResult.getNewPosts();
-            basePostJdbcRepository.saveAll(linkedPosts);
-            pageIdx++;
-        }
-    }
-
-    private CheckPostResult checkWithinPeriod(
+    CheckPostResult checkWithinPeriod(
         String baseUrl,
         String postUrl,
         Elements links
@@ -242,12 +214,17 @@ public class ScrapingService {
                 return new CheckPostResult(true, newPosts);
             }
 
-            newPosts.add(basePost);
+            if (basePostRepository.findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(
+                    basePost.getEncryptedMenuSequence(), basePost.getEncryptedMenuBoardSequence())
+                .size() == 0) {
+                newPosts.add(basePost);
+            }
         }
         return new CheckPostResult(false, newPosts);
     }
 
-    private BasePost generateBasePostByElement(String baseUrl, String postUrl, Element linkElement) {
+    private BasePost generateBasePostByElement(String baseUrl, String postUrl,
+        Element linkElement) {
         BasePost basePost = setURLValues(linkElement, baseUrl, postUrl);
         setPostValues(basePost);
 

@@ -18,6 +18,7 @@ import knusearch.clear.jpa.domain.dto.BasePostClassifyResponse;
 import knusearch.clear.jpa.domain.dto.BasePostResponse;
 import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.domain.post.ClassificationUpdateRequest;
+import knusearch.clear.jpa.service.BasePostScrapingFacade;
 import knusearch.clear.jpa.service.post.BasePostService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class CrawlController {
 
     //하나의 controller에서 다른 service들 불러오는건 전혀 문제없음
     private final BasePostService basePostService;
+    private final BasePostScrapingFacade basePostScrapingFacade;
 
     @GetMapping("/testRepo")
     public String testRepo() throws SQLException {
@@ -52,7 +54,7 @@ public class CrawlController {
     @GetMapping("/ictCrawlUpdate")
     public String ictCrawlUpdate() {
 
-        basePostService.crawlUpdate();  //이 메소드 성공적으로 완료되는 시점에서 DB에 Commit됨(자세한 내용은 BasePostService참고)
+        basePostScrapingFacade.crawlUpdate();  //이 메소드 성공적으로 완료되는 시점에서 DB에 Commit됨(자세한 내용은 BasePostService참고)
         log.info("KNU ICT POST - 크롤링 업데이트 완료!");
 
         return "crawlTest";
@@ -61,7 +63,7 @@ public class CrawlController {
     @GetMapping("/mainCrawlUpdate")
     public String mainCrawlUpdate() {
 
-        basePostService.crawlUpdate();
+        basePostScrapingFacade.crawlUpdate();
         log.info("KNU MAIN POST - 크롤링 업데이트 완료!");
         /*
         2023-09-25기준 25분 소요

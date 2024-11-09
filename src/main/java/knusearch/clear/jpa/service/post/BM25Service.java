@@ -34,11 +34,9 @@ public class BM25Service {
 
     private List<BasePost> documents;
 
-    private final BasePostService basePostService;
     private final PostTermRepository postTermRepository;
 
-    public BM25Service(BasePostRepository basePostRepository, PostTermRepository postTermRepository,
-        BasePostService basePostService) {
+    public BM25Service(BasePostRepository basePostRepository, PostTermRepository postTermRepository) {
         List<BasePost> documents = basePostRepository.findAll();
 
         List<PostTerm> postTerms = postTermRepository.findAll();
@@ -54,7 +52,6 @@ public class BM25Service {
         this.docFreqs = calculateDocFreqs(documents);  // 단어별 문서 빈도 계산
         this.postTermRepository = postTermRepository;
         this.documents = basePostRepository.findAll();
-        this.basePostService = basePostService;
     }
 
     // 문서의 평균 길이 계산 (캐싱해둠)
@@ -161,19 +158,8 @@ public class BM25Service {
         return idf;
     }
 
-    @Retryable(
-        value = {BM25UpdateException.class},
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 2000)
-    )
-    @Transactional
-    public void updateIndex(List<BasePost> basePosts) {
-        try {
-            documents.addAll(basePosts);
-            basePostService.tokenizeAndSaveBasePostTerms(basePosts);
-        } catch (Exception e) {
-            log.error("BM25 update failed, retrying...", e);
-            throw new BM25UpdateException("BM25 update failed", e);
-        }
+
+    public void addDocuments(List<BasePost> basePosts) {
+        documents.addAll(basePosts);
     }
 }

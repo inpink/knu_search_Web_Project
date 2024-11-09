@@ -46,13 +46,11 @@ import static knusearch.clear.jpa.domain.classification.SearchOption.*;
 @Slf4j
 public class BasePostService {
 
-    //공통되는 부분
-    private final ScrapingService scrapingService;
     // postService들 -> cralwSerivce 접근OK,
     // 반대로  cralwSerivce -> postService는 절대 금지(순환참조). 순환참조는 하면 안 됨
     private final BasePostRepository basePostRepository;
-
     private final TermRepository termRepository;
+    private final BM25Service bm25Service;
 
     // 스레드 안전한 ConcurrentHashMap을 사용하여 Term 캐싱
     private final ConcurrentMap<String, Term> termCache = new ConcurrentHashMap<>();
@@ -73,7 +71,6 @@ public class BasePostService {
 
     public void tokenizeAndSaveBasePostTerms(List<BasePost> basePosts) {
         List<PostTerm> postTermsBatch = new ArrayList<>();
-
         for (BasePost post : basePosts) {
             List<PostTerm> postTerms = saveTermPost(post);
             postTermsBatch.addAll(postTerms);
@@ -107,7 +104,6 @@ public class BasePostService {
             try {
                 postTermJdbcRepository.saveAll(postTermsBatch);
             } catch (Exception e) {
-                log.error("Failed to save post terms, retrying...", e);
                 throw new RuntimeException(e);
             }
         });
@@ -125,7 +121,6 @@ public class BasePostService {
             try {
                 // TODO: 캐시 업데이트
             } catch (Exception e) {
-                log.error("Failed to update BM25, retrying...", e);
                 throw new RuntimeException(e);
             }
         }).thenRun(() -> {
@@ -252,49 +247,7 @@ public class BasePostService {
         return false;  // 특수문자가 없으면 false 반환
     }
 
-    @Transactional
-    public void crawlUpdate() { // crawl and make baseposts
-        String baseUrl = getBaseUrl();
-        List<Board> boards = getBoards();
 
-        for (Board board : boards) {
-            String postUrl = board.getEncryptedName();
-            String firsNoticetUrl = scrapingService.makeFinalPostListUrl(baseUrl, postUrl, 1);
-            int totalPageIdx = scrapingService.totalPageIdx(firsNoticetUrl); //총 페이지수 구해옴
-
-            for (int i = 1; i <= totalPageIdx; i++) {
-                //for (int i = 1; i <= 2; i++) { //너무 많으니까 일단 10개정도로 테스트
-
-                //굳이 안받아와도 되긴할듯 필요하면 받아오고 //상속관계를 이용하여 BaseContent로 통일!
-                //추상화를 통해 DIP(의존관계역전) 적용된 케이스임
-                //List<BasePost> contentList = scrapeWebPage(baseUrl, postUrl ,i); //10페이지에 있는 것 contentMain에 저장시킴?
-                Elements links = scrapingService.getAllLinksFromOnePage(baseUrl, postUrl, i);
-
-                for (Element linkElement : links) {
-                    BasePost basePost = scrapingService.setURLValues(linkElement, baseUrl, postUrl);
-
-                    checkAndSave(basePost);
-                }
-                log.info(i + "번째 페이지에 있는 모든 게시글 크롤링");
-            }
-        }
-    }
-
-    //TODO: 현재는 이미 추가된 게시글이면 update 안함. 추후, 본문이 수정된 경우나 글이 삭제된 경우도 커버할 수 있게끔 구현할 수 있음.
-    // : 전체 삭제하고 다시 업로드(자원이 많이 들긴 하겠다만). 트랜잭션에 의해 재업하는 동안에도 문제없음. "테이블 행 싹 비우는 코드 java에서 하고 -> 모두 다시 업로드" 하는 방식 이용
-    @Transactional
-    public void checkAndSave(BasePost basePost) {
-        String encMenuSeq = basePost.getEncryptedMenuSequence();
-        String encMenuBoardSeq = basePost.getEncryptedMenuBoardSequence();
-
-        //DB에 없는 것만 추가!!!
-        if (basePostRepository.findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(
-            encMenuSeq, encMenuBoardSeq).size() == 0) {
-            scrapingService.setPostValues(basePost);
-            // 추출한 데이터를 MySQL 데이터베이스에 저장하는 코드 추가
-            basePostRepository.save(basePost); //★
-        }
-    }
 
     @Transactional
     public void savePost(BasePost basePost) {
@@ -412,6 +365,21 @@ public class BasePostService {
             PageRequest.of(0, 5));
 
         return transformToClassifyResponse(posts);
+    }
+
+    @Retryable(
+        value = {BM25UpdateException.class},
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 2000)
+    )
+    @Transactional
+    public void updateIndex(List<BasePost> basePosts) {
+        try {
+            bm25Service.addDocuments(basePosts);
+            tokenizeAndSaveBasePostTerms(basePosts);
+        } catch (Exception e) {
+            throw new BM25UpdateException("BM25 update failed", e);
+        }
     }
 
     public String getBaseUrl() {
