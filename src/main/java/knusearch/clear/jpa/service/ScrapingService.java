@@ -13,6 +13,7 @@ import knusearch.clear.constants.StringConstants;
 import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.domain.site.Board;
 import knusearch.clear.jpa.domain.site.Site;
+import knusearch.clear.jpa.repository.post.BasePostJdbcRepository;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
 import knusearch.clear.jpa.service.post.CheckPostResult;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class ScrapingService {
     }};
     private final BasePostRepository basePostRepository;
     private final ClassificationService classificationService;
+    private final BasePostJdbcRepository basePostJdbcRepository;
 
     @Transactional
     public String makeFinalPostListUrl(String baseUrl, String postUrl, int pageIdx) {
@@ -199,6 +201,7 @@ public class ScrapingService {
     }
 
     public void scrapeYesterdayPosts(Site site) {
+        log.info("Scraping posts from " );
         String baseUrl = site.getBaseUrl();
         List<Board> boards = site.getBoards();
 
@@ -218,7 +221,7 @@ public class ScrapingService {
             CheckPostResult checkPostResult = checkWithinPeriod(baseUrl, postUrl, links);
             isTimeToBreak = checkPostResult.isShouldBreak();
             List<BasePost> linkedPosts = checkPostResult.getNewPosts();
-//            basePostJdbcRepository.saveAll(linkedPosts);
+            basePostJdbcRepository.saveAll(linkedPosts);
             pageIdx++;
         }
     }

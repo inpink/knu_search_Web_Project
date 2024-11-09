@@ -1,7 +1,5 @@
 package knusearch.clear.jpa.service.post;
 
-import java.util.List;
-import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.domain.site.Site;
 import knusearch.clear.jpa.service.ScrapingService;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +14,7 @@ public class PostScrapingTask {
 
     private final ScrapingService scrapingService;
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 * * * * *")
     public void performTask() {
         scrapingService.scrapeYesterdayPosts(Site.MAIN);
     }
