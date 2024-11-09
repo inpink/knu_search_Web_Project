@@ -14,11 +14,11 @@ public enum MainBoard implements Board {
 
     @Override
     public String getName() {
-        return null;
+        return name;
     }
 
     @Override
     public String getEncryptedName() {
-        return null;
+        return encryptedName;
     }
 }

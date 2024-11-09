@@ -38,6 +38,8 @@ dependencies {
 	implementation 'org.json:json:20190722'
 	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
 	implementation 'net.sourceforge.tess4j:tess4j:4.5.4'
+	implementation 'org.springframework.retry:spring-retry'
+	implementation 'org.springframework:spring-aspects'
 
 	testImplementation 'junit:junit:4.13.1'
 	compileOnly 'org.projectlombok:lombok'

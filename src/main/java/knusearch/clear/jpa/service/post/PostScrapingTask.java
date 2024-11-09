@@ -1,20 +1,20 @@
 package knusearch.clear.jpa.service.post;
 
+import java.util.List;
+import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.domain.site.Site;
 import knusearch.clear.jpa.service.ScrapingService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class PostScrapingTask {
 
     private final ScrapingService scrapingService;
-
-    public PostScrapingTask(ScrapingService scrapingService) {
-        this.scrapingService = scrapingService;
-    }
 
     @Scheduled(cron = "0 0 0 * * *")
     public void performTask() {

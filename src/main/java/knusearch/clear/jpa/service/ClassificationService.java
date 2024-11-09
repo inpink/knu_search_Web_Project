@@ -17,7 +17,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.client.RestTemplate;
 
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
 public class ClassificationService {
@@ -31,11 +30,16 @@ public class ClassificationService {
     }};
 
     @Transactional
-    public Map<String, Object> predictClassification(final String searchQuery) {
+    public Map<String, Object> predictClassification(String query) {
+        query = query.replaceAll("[^가-힣\\s]", "");  // 한글과 공백을 제외한 모든 문자를 제거
+        if (query.isEmpty()) {
+            throw new IllegalArgumentException("Query is empty");
+        }
+
         // Flask 서버에 요청을 보내기 위한 데이터 구성
         String flaskEndpoint = "http://13.209.132.169:5000/predict"; // Flask 서버의 URL
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("text", searchQuery);
+        requestBody.put("text", query);
 
         // Flask 서버로 POST 요청을 보내고 응답 받기
         ResponseEntity<String> response = restTemplate.postForEntity(flaskEndpoint, requestBody, String.class);

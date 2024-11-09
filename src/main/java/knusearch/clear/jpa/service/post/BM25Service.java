@@ -11,10 +11,15 @@ import knusearch.clear.jpa.domain.post.PostTerm;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
 import knusearch.clear.jpa.repository.post.PostTermRepository;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Getter
+@Slf4j
 public class BM25Service {
 
     private double k1 = 1.5;  // BM25 조정 파라미터
@@ -29,10 +34,11 @@ public class BM25Service {
 
     private List<BasePost> documents;
 
-    private BasePostRepository basePostRepository;
+    private final BasePostService basePostService;
     private final PostTermRepository postTermRepository;
 
-    public BM25Service(BasePostRepository basePostRepository, PostTermRepository postTermRepository) {
+    public BM25Service(BasePostRepository basePostRepository, PostTermRepository postTermRepository,
+        BasePostService basePostService) {
         List<BasePost> documents = basePostRepository.findAll();
 
         List<PostTerm> postTerms = postTermRepository.findAll();
@@ -42,19 +48,13 @@ public class BM25Service {
         }
 
         postTerms.clear();
-        postTerms = null;
 
         this.totalDocs = documents.size();
         this.avgDocLength = calculateAvgDocLength(documents);  // 평균 문서 길이 캐싱
         this.docFreqs = calculateDocFreqs(documents);  // 단어별 문서 빈도 계산
         this.postTermRepository = postTermRepository;
         this.documents = basePostRepository.findAll();
-
-//        System.out.println("totalDocs: " + totalDocs);
-//        System.out.println("avgDocLength: " + avgDocLength);
-
-//        System.out.println("docWords: " + docWords.get(1L));
-//        System.out.println("docWords: " + docWords.get(2L));
+        this.basePostService = basePostService;
     }
 
     // 문서의 평균 길이 계산 (캐싱해둠)
@@ -96,10 +96,13 @@ public class BM25Service {
 
         for (String word : query) {
             int termFreq = termFrequency(word, doc);  // 단어 빈도 계산
-            if (termFreq == 0) continue;  // 문서에 단어가 없으면 건너뜀
+            if (termFreq == 0) {
+                continue;  // 문서에 단어가 없으면 건너뜀
+            }
 
             double idf = getCachedIDF(word);  // IDF 캐싱 사용
-            score += idf * ((termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength / avgDocLength))));
+            score += idf * ((termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength
+                / avgDocLength))));
         }
         // 시간 가중치를 BM25 점수에 곱해서 반영
         return score * timeWeight;
@@ -114,10 +117,13 @@ public class BM25Service {
 
         for (String word : query) {
             int termFreq = termFrequency(word, doc);  // 단어 빈도 계산
-            if (termFreq == 0) continue;  // 문서에 단어가 없으면 건너뜀
+            if (termFreq == 0) {
+                continue;  // 문서에 단어가 없으면 건너뜀
+            }
 
             double idf = getCachedIDF(word);  // IDF 캐싱 사용
-            score += idf * ((termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength / avgDocLength))));
+            score += idf * ((termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength
+                / avgDocLength))));
         }
         // 시간 가중치를 BM25 점수에 곱해서 반영
 
@@ -138,7 +144,8 @@ public class BM25Service {
     // 캐싱된 문서 길이 반환
     private double getCachedDocLength(BasePost doc) {
 //        System.out.println(doc.getId()+ "docLengthCache: " + docLengthCache.get(doc.getId()));
-        return docLengthCache.computeIfAbsent(doc.getId(), id -> (double) doc.getContent().length());
+        return docLengthCache.computeIfAbsent(doc.getId(),
+            id -> (double) doc.getContent().length());
     }
 
     // 캐싱된 IDF 값 반환
@@ -154,4 +161,19 @@ public class BM25Service {
         return idf;
     }
 
+    @Retryable(
+        value = {BM25UpdateException.class},
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 2000)
+    )
+    @Transactional
+    public void updateIndex(List<BasePost> basePosts) {
+        try {
+            documents.addAll(basePosts);
+            basePostService.tokenizeAndSaveBasePostTerms(basePosts);
+        } catch (Exception e) {
+            log.error("BM25 update failed, retrying...", e);
+            throw new BM25UpdateException("BM25 update failed", e);
+        }
+    }
 }

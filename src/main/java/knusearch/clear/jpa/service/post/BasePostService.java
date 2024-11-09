@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -19,7 +20,6 @@ import knusearch.clear.jpa.domain.site.Board;
 import knusearch.clear.jpa.domain.site.Site;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
 import knusearch.clear.jpa.repository.post.PostTermJdbcRepository;
-import knusearch.clear.jpa.repository.post.PostTermRepository;
 import knusearch.clear.jpa.repository.post.TermJdbcRepository;
 import knusearch.clear.jpa.repository.post.TermRepository;
 import knusearch.clear.jpa.service.ScrapingService;
@@ -32,6 +32,9 @@ import org.openkoreantext.processor.tokenizer.KoreanTokenizer.KoreanToken;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import scala.collection.Seq;
@@ -53,7 +56,6 @@ public class BasePostService {
 
     // 스레드 안전한 ConcurrentHashMap을 사용하여 Term 캐싱
     private final ConcurrentMap<String, Term> termCache = new ConcurrentHashMap<>();
-    private final PostTermRepository postTermRepository;
     private final PostTermJdbcRepository postTermJdbcRepository;
     private final TermJdbcRepository termJdbcRepository;
 
@@ -66,31 +68,75 @@ public class BasePostService {
     @Transactional
     public void saveAllTermPosts() {
         List<BasePost> basePosts = basePostRepository.findAll();
+        tokenizeAndSaveBasePostTerms(basePosts);
+    }
 
-        // PostTerm을 모아둘 리스트
+    public void tokenizeAndSaveBasePostTerms(List<BasePost> basePosts) {
         List<PostTerm> postTermsBatch = new ArrayList<>();
 
         for (BasePost post : basePosts) {
             List<PostTerm> postTerms = saveTermPost(post);
-
-            // PostTerm을 배치에 추가
             postTermsBatch.addAll(postTerms);
 
-            // 배치 크기만큼 쌓였을 때 bulk insert 실행
             if (postTermsBatch.size() >= BATCH_SIZE) {
-                postTermJdbcRepository.saveAll(postTermsBatch);
-                postTermsBatch.clear(); // 배치 완료 후 리스트 비움
+                // postTermsBatch의 복사본을 사용하여 비동기 작업을 동시에 실행
+                List<PostTerm> batchCopy = new ArrayList<>(postTermsBatch);
+                savePostTermsAsync(batchCopy);
+                updateBM25Async(batchCopy);
+
+                postTermsBatch.clear();
             }
         }
 
-        // 남아있는 PostTerm이 있으면 마저 insert 실행
         if (!postTermsBatch.isEmpty()) {
-            postTermJdbcRepository.saveAll(postTermsBatch);
+            List<PostTerm> batchCopy = new ArrayList<>(postTermsBatch);
+            savePostTermsAsync(batchCopy);
+            updateBM25Async(batchCopy);
         }
+    }
+
+    // 1번 작업: PostTerm을 저장 (비동기 및 재시도)
+    @Async
+    @Retryable(
+        value = {Exception.class},
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 2000)
+    )
+    public CompletableFuture<Void> savePostTermsAsync(List<PostTerm> postTermsBatch) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                postTermJdbcRepository.saveAll(postTermsBatch);
+            } catch (Exception e) {
+                log.error("Failed to save post terms, retrying...", e);
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    // 2번 작업: BM25 업데이트 (비동기 및 재시도)
+    @Async
+    @Retryable(
+        value = {Exception.class},
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 2000)
+    )
+    public CompletableFuture<Void> updateBM25Async(List<PostTerm> postTermsBatch) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                // TODO: 캐시 업데이트
+            } catch (Exception e) {
+                log.error("Failed to update BM25, retrying...", e);
+                throw new RuntimeException(e);
+            }
+        }).thenRun(() -> {
+            // TODO: 후속 작업을 이곳에 추가
+            log.info("BM25 update completed successfully for batch.");
+        });
     }
 
     /**
      * 게시글을 저장하고, 해당 게시글의 단어를 추출하여 저장
+     *
      * @param post 게시글 객체
      * @return 저장할 PostTerm 리스트
      */
@@ -160,6 +206,7 @@ public class BasePostService {
 
     /**
      * 게시글의 내용에서 형태소 분석을 통해 단어를 추출
+     *
      * @param content 게시글 내용
      * @return 단어 집합
      */
@@ -176,7 +223,8 @@ public class BasePostService {
         // 각 토큰을 Term으로 변환하여 Set에 추가
         OpenKoreanTextProcessorJava.tokensToJavaKoreanTokenList(tokens).forEach(token -> {
             // 조건: 명사이면서, 길이가 1보다 크고, 특수문자가 포함되지 않은 경우
-            if ((token.getPos().toString().equals("Noun") || token.getPos().toString().equals("ProperNoun"))
+            if ((token.getPos().toString().equals("Noun") || token.getPos().toString()
+                .equals("ProperNoun"))
                 && token.getText().length() > 1
                 && !containsSpecialCharacter(token.getText())) {
 
@@ -191,6 +239,7 @@ public class BasePostService {
 
     /**
      * 주어진 문자열에 특수문자가 포함되어 있는지 확인하는 메서드
+     *
      * @param text 확인할 텍스트
      * @return 특수문자가 포함되어 있으면 true, 아니면 false
      */
@@ -239,9 +288,9 @@ public class BasePostService {
         String encMenuBoardSeq = basePost.getEncryptedMenuBoardSequence();
 
         //DB에 없는 것만 추가!!!
-        if (basePostRepository.findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(encMenuSeq, encMenuBoardSeq).size() == 0) {
+        if (basePostRepository.findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(
+            encMenuSeq, encMenuBoardSeq).size() == 0) {
             scrapingService.setPostValues(basePost);
-            System.out.println(basePost.getTitle());
             // 추출한 데이터를 MySQL 데이터베이스에 저장하는 코드 추가
             basePostRepository.save(basePost); //★
         }
@@ -310,7 +359,8 @@ public class BasePostService {
         return transformToClassifyResponse(basePosts);
     }
 
-    private static List<BasePostClassifyResponse> transformToClassifyResponse(List<BasePost> basePosts) {
+    private static List<BasePostClassifyResponse> transformToClassifyResponse(
+        List<BasePost> basePosts) {
         return basePosts.stream()
             .map(basePost -> new BasePostClassifyResponse(
                 basePost.getId(),
@@ -329,7 +379,8 @@ public class BasePostService {
     }
 
     @Transactional
-    public void updateClassification(String query, int option, String except, String classification) {
+    public void updateClassification(String query, int option, String except,
+        String classification) {
         List<BasePost> posts = new ArrayList<>();
         if (except.isEmpty()) {
             posts = findAllByQuery(query, option);
@@ -354,7 +405,8 @@ public class BasePostService {
     }
 
     @Transactional
-    public List<BasePostClassifyResponse> findBasePostsNotInClassifications(List<String> classifications) {
+    public List<BasePostClassifyResponse> findBasePostsNotInClassifications(
+        List<String> classifications) {
         List<BasePost> posts = basePostRepository.findBasePostsNotInClassifications(
             classifications,
             PageRequest.of(0, 5));

@@ -14,8 +14,7 @@ import knusearch.clear.jpa.domain.post.BasePost;
 import knusearch.clear.jpa.domain.site.Board;
 import knusearch.clear.jpa.domain.site.Site;
 import knusearch.clear.jpa.repository.post.BasePostRepository;
-import knusearch.clear.util.ImageDownloader;
-import knusearch.clear.util.OCRProcessor;
+import knusearch.clear.jpa.service.post.CheckPostResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -24,11 +23,11 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
 public class ScrapingService {
@@ -121,7 +120,7 @@ public class ScrapingService {
 
         // "scrtWrtiYn"와 "encMenuSeq"와 "encMenuBoardSeq" 값을 가져오기
         // ↓기본값으로 false를 설정. 어떤 사이트에는 scrtWrtiYn값이 없다. scrtWrtiYn는 상위 노출되는 공지유무를 뜻함
-        Boolean scrtWrtiYn = jsonObject.optBoolean("scrtWrtiYn", false);  //얘는 boolean
+        boolean scrtWrtiYn = jsonObject.optBoolean("scrtWrtiYn", false);  //얘는 boolean
         String encMenuSeq = jsonObject.getString("encMenuSeq");
         String encMenuBoardSeq = jsonObject.getString("encMenuBoardSeq");
 
@@ -133,7 +132,6 @@ public class ScrapingService {
         basePost.setScrtWrtiYn(scrtWrtiYn);
         basePost.setEncryptedMenuSequence(encMenuSeq);
         basePost.setEncryptedMenuBoardSequence(encMenuBoardSeq);
-
         return basePost;
     }
 
@@ -147,11 +145,9 @@ public class ScrapingService {
             // 원하는 div 요소 선택 (class가 "tbl_view"인 div를 선택)
             Element divElement = document.select(".tblw_subj").first();
             String title = divElement.text();  // div 내용 추출
-            //System.out.println("크롤링 제목:" + title);
 
             Element divElement2 = document.select(".tbl_view").first();
             String text = divElement2.text();  // div 내용 추출
-            /*System.out.println("크롤링 본문:" + text);*/
 
             // 이미지 태그 선택
             Elements imgElements = divElement2.select("img");
@@ -160,7 +156,6 @@ public class ScrapingService {
             String imageSrc = null;
             for (Element imgElement : imgElements) { //여러개면 여러개 다 뽑아냄. 일단 지금은 db에 마지막 1개만 담고있음
                 imageSrc = "https://web.kangnam.ac.kr" + imgElement.attr("src");
-                /*System.out.println("크롤링 본문의 이미지 소스 링크:" + "https://web.kangnam.ac.kr" + imageSrc);*/
             }
 
             //Date 추출. span으로 묶여있어서 파싱으로 Date 형식만 가져옴
@@ -175,27 +170,16 @@ public class ScrapingService {
             if (matcher.find()) {
                 // 그룹 1에서 일치하는 문자열 가져오기
                 dateString = matcher.group(1);
-                /*System.out.println("크롤링 Date: " + dateTime);*/
             }
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
             LocalDate dateTime = LocalDate.parse(dateString, formatter);
-
-            /*// 분류 추출
-            Element divElement4 = document.select(".colum20").first();
-            String classification = divElement4.text().split(" ")[1];  // div 내용 추출
-            // div안에 다른 div가 있는 구조라, split으로 분리해서 classification명만 추출
-               */
-
-            // 이미지에서 텍스트 추출
-            String extractedText = extractText(imageSrc);
 
             Scanner scanner = new Scanner(System.in);
             final String cutText = cutString(text, BasePost.TEXT_COLUMN_LENGTH);
             basePost.setTitle(title);
             basePost.setText(cutText);
             basePost.setImage(cutString(imageSrc, BasePost.IMAGE_COLUMN_LENGTH));
-            basePost.setImageText(cutString(extractedText, BasePost.TEXT_COLUMN_LENGTH));
             basePost.setDateTime(dateTime);
             basePost.setClassification(StringConstants.UNDETERMINED.getDescription());
         } catch (Exception e) {
@@ -204,32 +188,6 @@ public class ScrapingService {
         }
     }
 
-    private String extractText(String imageUrl) throws Exception {
-        if (imageUrl == null) {
-            return "";
-        }
-
-        // 임시 파일 이름 사용
-        String filename = "downloaded_image"; // 확장자 없음
-
-        // 이미지 다운로드
-        //System.out.println("imageUrl = " + imageUrl);
-        try {
-            ImageDownloader.downloadImage(imageUrl, filename);
-
-            // OCR을 사용하여 텍스트 추출
-            String extractedText = OCRProcessor.extractTextFromImage(filename + ".jpg");
-            //System.out.println("Extracted Text: " + extractedText);
-
-            return extractedText;
-        } catch (Exception e) {
-            System.out.println(e);
-            return "";
-        }
-    }
-
-
-    //글자수가 len*4 Byte를 초과하는 경우 cut하기.
     public String cutString(String text, int byteSize) {
         int koreanLen = byteSize / 4;
         if (text != null && text.length() > koreanLen) {
@@ -244,44 +202,55 @@ public class ScrapingService {
         String baseUrl = site.getBaseUrl();
         List<Board> boards = site.getBoards();
 
-        final LocalDate yesterday = LocalDate.now().minusDays(1);
-
         for (Board board : boards) {
             String postUrl = board.getEncryptedName();
-            savePostsWithinPeriod(baseUrl, postUrl, yesterday);
+            savePostsWithinPeriod(baseUrl, postUrl);
         }
     }
 
     @Transactional
-    public void savePostsWithinPeriod(String baseUrl, String postUrl, LocalDate yesterday) {
+    public void savePostsWithinPeriod(String baseUrl, String postUrl) {
         int pageIdx = 1;
         boolean isTimeToBreak = false;
-        while (isTimeToBreak) {
+
+        while (!isTimeToBreak) {
             Elements links = getAllLinksFromOnePage(baseUrl, postUrl, pageIdx);
-            isTimeToBreak = checkWithinPeriodAndSave(baseUrl, postUrl, yesterday, links);
+            CheckPostResult checkPostResult = checkWithinPeriod(baseUrl, postUrl, links);
+            isTimeToBreak = checkPostResult.isShouldBreak();
+            List<BasePost> linkedPosts = checkPostResult.getNewPosts();
+//            basePostJdbcRepository.saveAll(linkedPosts);
             pageIdx++;
         }
     }
 
-    public boolean checkWithinPeriodAndSave(
+    private CheckPostResult checkWithinPeriod(
         String baseUrl,
         String postUrl,
-        LocalDate yesterday,
         Elements links
     ) {
-        for (Element linkElement : links) {
-            BasePost basePost = setURLValues(linkElement, baseUrl, postUrl);
+        List<BasePost> newPosts = new ArrayList<>();
+        final LocalDate yesterday = LocalDate.now().minusDays(1);
 
-            Map<String, Object> predictResult = classificationService.predictClassification(basePost.getText() + basePost.getTitle());
-            basePost.setClassification((String) predictResult.get("predictedClass"));
+        for (Element linkElement : links) {
+            BasePost basePost = generateBasePostByElement(baseUrl, postUrl, linkElement);
 
             LocalDate dateTime = basePost.getDateTime();
             if (dateTime.isBefore(yesterday)) {
-                return true;
+                return new CheckPostResult(true, newPosts);
             }
 
-            basePostRepository.save(basePost);
+            newPosts.add(basePost);
         }
-        return false;
+        return new CheckPostResult(false, newPosts);
+    }
+
+    private BasePost generateBasePostByElement(String baseUrl, String postUrl, Element linkElement) {
+        BasePost basePost = setURLValues(linkElement, baseUrl, postUrl);
+        setPostValues(basePost);
+
+        Map<String, Object> predictResult = classificationService.predictClassification(
+            basePost.getText() + basePost.getTitle());
+        basePost.setClassification((String) predictResult.get("predictedClass"));
+        return basePost;
     }
 }
