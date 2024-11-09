@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import knusearch.clear.jpa.domain.Search;
 import knusearch.clear.jpa.domain.SearchSite;
 import knusearch.clear.jpa.domain.post.BasePost;
-import knusearch.clear.jpa.service.CrawlService;
+import knusearch.clear.jpa.service.ScrapingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +30,7 @@ public class InitDb {
     static class InitService {
 
         private final EntityManager em;
-        private final CrawlService crawlService;
+        private final ScrapingService scrapingService;
 
 
         public void dbInit1() {

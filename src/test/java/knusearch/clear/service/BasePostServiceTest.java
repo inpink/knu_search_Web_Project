@@ -3,7 +3,7 @@ package knusearch.clear.service;
 import static org.junit.Assert.assertEquals;
 
 import knusearch.clear.jpa.domain.post.BasePost;
-import knusearch.clear.jpa.service.CrawlService;
+import knusearch.clear.jpa.service.ScrapingService;
 import knusearch.clear.jpa.service.post.BasePostService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class BasePostServiceTest {
 
     @Mock
-    private CrawlService crawlService;
+    private ScrapingService scrapingService;
 
     @InjectMocks
     private BasePostService basePostService;

@@ -20,7 +20,7 @@ import knusearch.clear.jpa.repository.post.PostTermJdbcRepository;
 import knusearch.clear.jpa.repository.post.PostTermRepository;
 import knusearch.clear.jpa.repository.post.TermJdbcRepository;
 import knusearch.clear.jpa.repository.post.TermRepository;
-import knusearch.clear.jpa.service.CrawlService;
+import knusearch.clear.jpa.service.ScrapingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.nodes.Element;
@@ -42,7 +42,7 @@ import static knusearch.clear.jpa.domain.classification.SearchOption.*;
 public class BasePostService {
 
     //공통되는 부분
-    private final CrawlService crawlService;
+    private final ScrapingService scrapingService;
     // postService들 -> cralwSerivce 접근OK,
     // 반대로  cralwSerivce -> postService는 절대 금지(순환참조). 순환참조는 하면 안 됨
     private final BasePostRepository basePostRepository;
@@ -207,9 +207,8 @@ public class BasePostService {
         String[] allPostUrl = getAllPostUrl();
 
         for (String postUrl : allPostUrl) {
-            System.out.println("postUrl = " + postUrl);
-            String firsNoticetUrl = crawlService.makeFinalPostListUrl(baseUrl, postUrl, 1);
-            int totalPageIdx = crawlService.totalPageIdx(firsNoticetUrl); //총 페이지수 구해옴
+            String firsNoticetUrl = scrapingService.makeFinalPostListUrl(baseUrl, postUrl, 1);
+            int totalPageIdx = scrapingService.totalPageIdx(firsNoticetUrl); //총 페이지수 구해옴
 
             for (int i = 1; i <= totalPageIdx; i++) {
                 //for (int i = 1; i <= 2; i++) { //너무 많으니까 일단 10개정도로 테스트
@@ -217,17 +216,15 @@ public class BasePostService {
                 //굳이 안받아와도 되긴할듯 필요하면 받아오고 //상속관계를 이용하여 BaseContent로 통일!
                 //추상화를 통해 DIP(의존관계역전) 적용된 케이스임
                 //List<BasePost> contentList = scrapeWebPage(baseUrl, postUrl ,i); //10페이지에 있는 것 contentMain에 저장시킴?
-                Elements links = crawlService.GetAllLinksFromOnePage(baseUrl, postUrl, i);
+                Elements links = scrapingService.GetAllLinksFromOnePage(baseUrl, postUrl, i);
 
                 for (Element linkElement : links) {
                     BasePost basePost = new BasePost();
-                    crawlService.setURLValues(basePost, linkElement, baseUrl, postUrl);
+                    scrapingService.setURLValues(basePost, linkElement, baseUrl, postUrl);
 
-                    //TODO: Transcational을 없애고, 아래 하나 완료될 때마다 바로 저장되도록
                     checkAndSave(basePost);
                 }
-
-                System.out.println(i + "번째 페이지에 있는 모든 게시글 크롤링");
+                log.info(i + "번째 페이지에 있는 모든 게시글 크롤링");
             }
         }
     }
@@ -241,7 +238,7 @@ public class BasePostService {
 
         //DB에 없는 것만 추가!!!
         if (basePostRepository.findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(encMenuSeq, encMenuBoardSeq).size() == 0) {
-            crawlService.setPostValues(basePost);
+            scrapingService.setPostValues(basePost);
             System.out.println(basePost.getTitle());
             // 추출한 데이터를 MySQL 데이터베이스에 저장하는 코드 추가
             basePostRepository.save(basePost); //★

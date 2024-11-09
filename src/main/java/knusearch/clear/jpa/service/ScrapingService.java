@@ -10,6 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import knusearch.clear.constants.StringConstants;
 import knusearch.clear.jpa.domain.post.BasePost;
+import knusearch.clear.jpa.repository.post.BasePostRepository;
 import knusearch.clear.util.ImageDownloader;
 import knusearch.clear.util.OCRProcessor;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
-public class CrawlService {
+public class ScrapingService {
 
     private static final List<String> classifications = new ArrayList<>() {{
         add("0"); //학사 : 학사 공지
@@ -35,6 +36,7 @@ public class CrawlService {
         add("2"); //학습/상담 : 학습/상담 : 주로 교내. 학습 지원, 상담 지원
         add("3"); //취창업 : 주로 교외. 취업, 창업 관련
     }};
+    private final BasePostRepository basePostRepository;
 
     @Transactional
     public String makeFinalPostListUrl(String baseUrl, String postUrl, int pageIdx) {
@@ -60,7 +62,6 @@ public class CrawlService {
             Element spanElement = div1.select("span").first();
 
             String spanText = spanElement.text();
-            System.out.println("spanText = " + spanText);
 
             // "/"를 기준으로 문자열을 분할
             String[] parts = spanText.split("/");
@@ -70,7 +71,7 @@ public class CrawlService {
             int totalPageIdx = Integer.parseInt(numberPart);
 
             // 결과 출력
-            System.out.println("Extracted Number: " + totalPageIdx);
+            log.info("Extracted Number: " + totalPageIdx);
             return totalPageIdx;
         } catch (Exception e) {
             // 예외 처리
@@ -82,7 +83,6 @@ public class CrawlService {
 
     @Transactional
     public Elements GetAllLinksFromOnePage(String baseUrl, String postUrl, int pageIdx) {  //하나의 페이지에서 모든 게시물들 링크뽑아냄
-
         //전체를 담을 List (현재 사용 X)
         //List<BasePost> postList = new ArrayList<>();
 
@@ -195,21 +195,6 @@ public class CrawlService {
             // 예외 처리
             e.printStackTrace();
         }
-    }
-
-    private String decideClassification(String title, String cutText, Scanner scanner) throws Exception {
-        System.out.println("title = " + title);
-        System.out.println("cutText = " + cutText);
-
-        for (int i = 0; i < 10; i++) { //10번 try
-            String clas = scanner.next();
-            if (classifications.contains(clas)) {
-                return clas;
-            }
-            System.out.println("없는 class를 입력하였습니다.");
-        }
-
-        throw new Exception("class를 정하지 못했습니다.");
     }
 
     private String extractText(String imageUrl) throws Exception {
