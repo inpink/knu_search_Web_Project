@@ -210,9 +210,9 @@ public class ScrapingService {
             BasePost basePost = generateBasePostByElement(baseUrl, postUrl, linkElement);
 
             LocalDate dateTime = basePost.getDateTime();
-            if (dateTime.isBefore(yesterday)) {
-                return new CheckPostResult(true, newPosts);
-            }
+//            if (dateTime.isBefore(yesterday)) {
+//                return new CheckPostResult(true, newPosts);
+//            }
 
             if (basePostRepository.findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(
                     basePost.getEncryptedMenuSequence(), basePost.getEncryptedMenuBoardSequence())

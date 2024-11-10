@@ -24,15 +24,15 @@ public class BM25Service {
 
     private double k1 = 1.5;  // BM25 조정 파라미터
     private double b = 0.75;  // 문서 길이 보정 파라미터
-    private double avgDocLength;  // 평균 문서 길이
-    private int totalDocs;  // 전체 문서 수
-    private Map<String, Double> idfCache = new ConcurrentHashMap<>();  // 단어별 IDF 캐시
-    private Map<Long, Double> docLengthCache = new ConcurrentHashMap<>();  // 문서 길이 캐시
+    public double avgDocLength;  // 평균 문서 길이
+    public int totalDocs;  // 전체 문서 수
+    public Map<String, Double> idfCache = new ConcurrentHashMap<>();  // 단어별 IDF 캐시
+    public Map<Long, Double> docLengthCache = new ConcurrentHashMap<>();  // 문서 길이 캐시
 
-    private Map<String, Integer> docFreqs;  // 단어의 문서 빈도 (IDF 계산용)
-    private Map<Long, Map<String, Integer>> docWords = new ConcurrentHashMap<>(); // 문서 별 단어와 단어 빈도
+    public Map<String, Integer> docFreqs;  // 단어의 문서 빈도 (IDF 계산용)
+    public Map<Long, Map<String, Integer>> docWords = new ConcurrentHashMap<>(); // 문서 별 단어와 단어 빈도
 
-    private List<BasePost> documents;
+    public List<BasePost> documents;
 
     private final PostTermRepository postTermRepository;
 

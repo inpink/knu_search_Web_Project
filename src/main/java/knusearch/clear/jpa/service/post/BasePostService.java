@@ -101,11 +101,9 @@ public class BasePostService {
     )
     public CompletableFuture<Void> savePostTermsAsync(List<PostTerm> postTermsBatch) {
         return CompletableFuture.runAsync(() -> {
-            try {
-                postTermJdbcRepository.saveAll(postTermsBatch);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+            postTermJdbcRepository.saveAll(postTermsBatch);
+        }).exceptionally(ex -> {
+            throw new RuntimeException(ex);
         });
     }
 
@@ -116,16 +114,27 @@ public class BasePostService {
         maxAttempts = 3,
         backoff = @Backoff(delay = 2000)
     )
-    public CompletableFuture<Void> updateBM25Async(List<PostTerm> postTermsBatch) {
+    public CompletableFuture<Void> updateBM25Async(List<PostTerm> postTerms) {
         return CompletableFuture.runAsync(() -> {
             try {
-                // TODO: 캐시 업데이트
+                BasePost post = postTerms.get(0).getBasePost();
+                bm25Service.totalDocs++;
+
+                bm25Service.avgDocLength =
+                    ((bm25Service.avgDocLength * bm25Service.totalDocs) + post.getContent()
+                        .length()) / bm25Service.totalDocs;
+
+                bm25Service.docLengthCache.put(post.getId(), (double) post.getContent().length());
+
+                for (PostTerm postTerm : postTerms) {
+                    String word = postTerm.getTerm().getName();
+                    bm25Service.docWords.computeIfAbsent(postTerm.getPostId(), k -> new HashMap<>())
+                        .merge(word, 1, Integer::sum);
+                    bm25Service.docFreqs.put(word, bm25Service.docFreqs.getOrDefault(word, 0) + 1);
+                }
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }).thenRun(() -> {
-            // TODO: 후속 작업을 이곳에 추가
-            log.info("BM25 update completed successfully for batch.");
         });
     }
 
@@ -246,7 +255,6 @@ public class BasePostService {
         }
         return false;  // 특수문자가 없으면 false 반환
     }
-
 
 
     @Transactional
