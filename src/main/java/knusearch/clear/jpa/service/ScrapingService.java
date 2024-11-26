@@ -214,11 +214,7 @@ public class ScrapingService {
                 return new CheckPostResult(true, newPosts);
             }
 
-            if (basePostRepository.findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(
-                    basePost.getEncryptedMenuSequence(), basePost.getEncryptedMenuBoardSequence())
-                .size() == 0) {
-                newPosts.add(basePost);
-            }
+            newPosts.add(basePost);
         }
         return new CheckPostResult(false, newPosts);
     }

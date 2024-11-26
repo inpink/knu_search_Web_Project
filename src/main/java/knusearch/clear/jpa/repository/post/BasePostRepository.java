@@ -13,10 +13,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BasePostRepository extends JpaRepository<BasePost, Long> {
 
-    // 전체 문서 수 계산
-    @Query("SELECT COUNT(p) FROM BasePost p")
-    long countTotalPosts();
-
     List<BasePost> findAllByEncryptedMenuSequenceAndEncryptedMenuBoardSequence(
             String EncryptedMenuSequence,
             String EncryptedMenuBoardSequence);

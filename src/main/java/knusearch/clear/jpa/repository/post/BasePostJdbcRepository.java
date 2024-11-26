@@ -26,7 +26,9 @@ public class BasePostJdbcRepository {
                     "INSERT INTO base_post " +
                         "(url, site_name, scrt_wrti_yn, encrypted_menu_sequence, encrypted_menu_board_sequence, " +
                         "title, classification, text, image, image_text, date_time) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                        "ON DUPLICATE KEY UPDATE " +
+                        "title = VALUES(title), text = VALUES(text), image = VALUES(image);", Statement.RETURN_GENERATED_KEYS);
 
                 ps.setString(1, basePost.getUrl());
                 ps.setString(2, basePost.getSiteName());

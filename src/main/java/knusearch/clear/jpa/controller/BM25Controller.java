@@ -8,7 +8,6 @@ import knusearch.clear.jpa.service.post.BM25Service;
 import knusearch.clear.jpa.service.post.BasePostService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Connection.Base;
 import org.openkoreantext.processor.OpenKoreanTextProcessorJava;
 import org.openkoreantext.processor.tokenizer.KoreanTokenizer.KoreanToken;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +22,6 @@ import scala.collection.Seq;
 public class BM25Controller {
 
     private final BasePostService postService;
-
-    private final BasePostRepository postRepository;
-
     private final BM25Service bm25Service;
     private final BasePostRepository basePostRepository;
     private final TermRepository termRepository;
@@ -63,19 +59,20 @@ public class BM25Controller {
         CharSequence normalized = OpenKoreanTextProcessorJava.normalize(query);
         Seq<KoreanToken> tokens = OpenKoreanTextProcessorJava.tokenize(normalized);
 
-
-        List<String> words = OpenKoreanTextProcessorJava.tokensToJavaKoreanTokenList(tokens).stream()
-            .filter(token -> (token.getPos().toString().equals("Noun") || token.getPos().toString().equals("ProperNoun"))
+        List<String> words = OpenKoreanTextProcessorJava.tokensToJavaKoreanTokenList(tokens)
+            .stream()
+            .filter(token -> (token.getPos().toString().equals("Noun") || token.getPos().toString()
+                .equals("ProperNoun"))
                 && token.getText().length() > 1
                 && !postService.containsSpecialCharacter(token.getText()))
             .map(token -> token.getText())  // 필요한 텍스트만 추출
-                .toList();
+            .toList();
 
         System.out.println("words: " + words);
 
         BasePost post = basePostRepository.findById(Long.valueOf(postId)).get();
-        double bm25 =bm25Service.calculateBM25(post,words);
-        return ResponseEntity.ok("success"+bm25);
+        double bm25 = bm25Service.calculateBM25(post, words);
+        return ResponseEntity.ok("success" + bm25);
     }
 
     @GetMapping("/bm25All")
@@ -94,13 +91,15 @@ public class BM25Controller {
             .map(token -> token.getText())  // 필요한 텍스트만 추출
             .toList();
 
-        System.out.println("words: " + words);
+        log.info("words: " + words);
 
         List<BasePost> posts = basePostRepository.findAll();
         for (BasePost post : posts) {
             double bm25 = bm25Service.calculateBM25(post, words);
 
-            if (bm25 > 0) System.out.println("post: " + post.getId() + ", bm25: " + bm25);
+            if (bm25 > 0) {
+                log.info("post: " + post.getId() + ", bm25: " + bm25);
+            }
         }
         return ResponseEntity.ok("success");
     }
